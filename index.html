@@ -202,29 +202,10 @@ h1 {
 <!-- ▼ メイン表示領域（ここにグループ・メンバー・カードが切り替わって表示される） -->
 <div id="main-view"></div>
 
-<!-- ▼ トリミング画面（最初は非表示） -->
-<div id="crop-view" style="display:none; text-align:center;">
-  <h2 style="color:#6bbcff;">画像を切り抜く</h2>
-
-  <canvas id="crop-canvas" style="max-width:100%; border-radius:12px;"></canvas>
-
-  <div style="margin-top:20px;">
-    <button id="crop-confirm" class="tile">切り抜く</button>
-    <button id="crop-cancel" class="delete-btn">キャンセル</button>
-  </div>
-</div>
-
 <!-- ▼ 追加ボタン（画面ごとに役割が変わる） -->
 <button id="add-button" onclick="handleAdd()">＋ 追加</button>
 
 <script>
-let cropImage = null;     // 読み込んだ画像
-let cropCanvas = null;    // canvas
-let cropCtx = null;       // canvas context
-let cropBox = { x: 50, y: 50, w: 200, h: 280 }; // トレカ比率 1:1.4
-let dragging = false;
-let dragOffset = { x: 0, y: 0 };
-  
 // ======================================================
 // データ保存・読み込み
 // ======================================================
@@ -497,11 +478,17 @@ function addCard() {
     const reader = new FileReader();
 
     reader.onload = function (e) {
-      cropImage = new Image();
-      cropImage.onload = () => {
-        startCropMode(name, count);
-      };
-      cropImage.src = e.target.result;
+      const base64 = e.target.result;
+
+      data.groups[currentGroup].members[currentMember].cards.push({
+        name,
+        img: base64,
+        price: "未取得",
+        count
+      });
+
+      save();
+      render();
     };
 
     reader.readAsDataURL(file);
@@ -510,108 +497,6 @@ function addCard() {
   input.click();
 }
 
-function startCropMode(cardName, count) {
-  document.getElementById("main-view").style.display = "none";
-  document.getElementById("add-button").style.display = "none";
-  document.getElementById("crop-view").style.display = "block";
-
-  cropCanvas = document.getElementById("crop-canvas");
-  cropCtx = cropCanvas.getContext("2d");
-
-  cropCanvas.width = cropImage.width;
-  cropCanvas.height = cropImage.height;
-
-  drawCropCanvas();
-  // ドラッグ操作
-  cropCanvas.onmousedown = (e) => {
-    const rect = cropCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    if (
-      x >= cropBox.x &&
-      x <= cropBox.x + cropBox.w &&
-      y >= cropBox.y &&
-      y <= cropBox.y + cropBox.h
-    ) {
-      dragging = true;
-      dragOffset.x = x - cropBox.x;
-      dragOffset.y = y - cropBox.y;
-    }
-  };
-
-  cropCanvas.onmousemove = (e) => {
-    if (!dragging) return;
-
-    const rect = cropCanvas.getBoundingClientRect();
-    cropBox.x = e.clientX - rect.left - dragOffset.x;
-    cropBox.y = e.clientY - rect.top - dragOffset.y;
-
-    drawCropCanvas();
-  };
-
-  cropCanvas.onmouseup = () => (dragging = false);
-  cropCanvas.onmouseleave = () => (dragging = false);
-
-  // 切り抜きボタン
-  document.getElementById("crop-confirm").onclick = () => {
-    finishCrop(cardName, count);
-  };
-
-  // キャンセル
-  document.getElementById("crop-cancel").onclick = () => {
-    document.getElementById("crop-view").style.display = "none";
-    document.getElementById("main-view").style.display = "block";
-    document.getElementById("add-button").style.display = "block";
-  };
-}
-
-function drawCropCanvas() {
-  cropCtx.drawImage(cropImage, 0, 0);
-
-  // 枠の外を暗くする
-  cropCtx.fillStyle = "rgba(0,0,0,0.4)";
-  cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
-
-  // 切り抜き枠部分だけ透明に
-  cropCtx.clearRect(cropBox.x, cropBox.y, cropBox.w, cropBox.h);
-
-  // 枠線
-  cropCtx.strokeStyle = "#6bbcff";
-  cropCtx.lineWidth = 4;
-  cropCtx.strokeRect(cropBox.x, cropBox.y, cropBox.w, cropBox.h);
-}
-
-function finishCrop(cardName, count) {
-  const tempCanvas = document.createElement("canvas");
-  tempCanvas.width = cropBox.w;
-  tempCanvas.height = cropBox.h;
-
-  const tctx = tempCanvas.getContext("2d");
-  tctx.drawImage(
-    cropImage,
-    cropBox.x, cropBox.y, cropBox.w, cropBox.h,
-    0, 0, cropBox.w, cropBox.h
-  );
-
-  const base64 = tempCanvas.toDataURL("image/png");
-
-  data.groups[currentGroup].members[currentMember].cards.push({
-    name: cardName,
-    img: base64,
-    price: "未取得",
-    count
-  });
-
-  save();
-
-  // 画面を戻す
-  document.getElementById("crop-view").style.display = "none";
-  document.getElementById("main-view").style.display = "block";
-  document.getElementById("add-button").style.display = "block";
-
-  render();
-}
 
   
 // ======================================================
@@ -649,50 +534,6 @@ function searchMercari() {
 
 // ======================================================
 render();
-
-// ======== スマホ対応（タッチ操作） ========
-function setupCropTouchEvents() {
-  const canvas = document.getElementById("crop-canvas");
-
-  canvas.addEventListener("touchstart", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-
-    if (
-      x >= cropBox.x &&
-      x <= cropBox.x + cropBox.w &&
-      y >= cropBox.y &&
-      y <= cropBox.y + cropBox.h
-    ) {
-      dragging = true;
-      dragOffset.x = x - cropBox.x;
-      dragOffset.y = y - cropBox.y;
-    }
-  });
-
-  canvas.addEventListener("touchmove", (e) => {
-    if (!dragging) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-
-    cropBox.x = touch.clientX - rect.left - dragOffset.x;
-    cropBox.y = touch.clientY - rect.top - dragOffset.y;
-
-    drawCropCanvas();
-  });
-
-  canvas.addEventListener("touchend", () => {
-    dragging = false;
-  });
-}
-
-// ページ読み込み時に1回だけ設定
-window.onload = () => {
-  setupCropTouchEvents();
-};
 </script>
 
 </body>
