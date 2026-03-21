@@ -214,41 +214,6 @@ h1 {
   </div>
 </div>
 
-// ======== スマホ対応（タッチ操作） ========
-cropCanvas.addEventListener("touchstart", (e) => {
-  const rect = cropCanvas.getBoundingClientRect();
-  const touch = e.touches[0];
-  const x = touch.clientX - rect.left;
-  const y = touch.clientY - rect.top;
-
-  if (
-    x >= cropBox.x &&
-    x <= cropBox.x + cropBox.w &&
-    y >= cropBox.y &&
-    y <= cropBox.y + cropBox.h
-  ) {
-    dragging = true;
-    dragOffset.x = x - cropBox.x;
-    dragOffset.y = y - cropBox.y;
-  }
-});
-
-cropCanvas.addEventListener("touchmove", (e) => {
-  if (!dragging) return;
-
-  const rect = cropCanvas.getBoundingClientRect();
-  const touch = e.touches[0];
-
-  cropBox.x = touch.clientX - rect.left - dragOffset.x;
-  cropBox.y = touch.clientY - rect.top - dragOffset.y;
-
-  drawCropCanvas();
-});
-
-cropCanvas.addEventListener("touchend", () => {
-  dragging = false;
-});
-
 <!-- ▼ 追加ボタン（画面ごとに役割が変わる） -->
 <button id="add-button" onclick="handleAdd()">＋ 追加</button>
 
@@ -557,6 +522,41 @@ function startCropMode(cardName, count) {
   cropCanvas.height = cropImage.height;
 
   drawCropCanvas();
+
+  // ======== スマホ対応（タッチ操作） ========
+cropCanvas.addEventListener("touchstart", (e) => {
+  const rect = cropCanvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
+
+  if (
+    x >= cropBox.x &&
+    x <= cropBox.x + cropBox.w &&
+    y >= cropBox.y &&
+    y <= cropBox.y + cropBox.h
+  ) {
+    dragging = true;
+    dragOffset.x = x - cropBox.x;
+    dragOffset.y = y - cropBox.y;
+  }
+});
+
+cropCanvas.addEventListener("touchmove", (e) => {
+  if (!dragging) return;
+
+  const rect = cropCanvas.getBoundingClientRect();
+  const touch = e.touches[0];
+
+  cropBox.x = touch.clientX - rect.left - dragOffset.x;
+  cropBox.y = touch.clientY - rect.top - dragOffset.y;
+
+  drawCropCanvas();
+});
+
+cropCanvas.addEventListener("touchend", () => {
+  dragging = false;
+});
 
   // ドラッグ操作
   cropCanvas.onmousedown = (e) => {
