@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>推しカード管理</title>
 
-<!-- PWA対応 -->
+<!-- PWA対応（必要ならそのまま残す） -->
 <link rel="manifest" href="manifest.json">
 <script>
 if ('serviceWorker' in navigator) {
@@ -14,7 +14,7 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <style>
-body {
+/body {
   font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
   background: #f5fbff;
   margin: 0;
@@ -22,57 +22,67 @@ body {
   color: #333;
 }
 
-h1, h2, h3 {
+/* タイトル */
+h1 {
   color: #3aa0d8;
+  margin-bottom: 10px;
+  font-size: 24px;
+}
+
+/* 戻るボタン */
+#back-button {
+  background: #b5dfff;
+  color: #005a8d;
+  border-radius: 8px;
+  padding: 8px 12px;
+  width: auto;
   margin-bottom: 10px;
 }
 
-button {
+/* 追加ボタン */
+#add-button {
   width: 100%;
-  padding: 12px;
-  margin-top: 8px;
+  padding: 14px;
   border: none;
   border-radius: 10px;
   background: #6ec9ff;
   color: white;
-  font-size: 16px;
+  font-size: 18px;
+  margin-top: 20px;
 }
 
-input, select {
-  padding: 10px;
-  font-size: 16px;
-  border-radius: 8px;
-  border: 1px solid #bde4ff;
-  width: 100%;
-  margin-bottom: 10px;
-}
-
-.group, .member {
+/* タイル共通 */
+.tile {
   background: white;
   padding: 15px;
   border-radius: 12px;
   margin-bottom: 15px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  text-align: center;
+  font-size: 18px;
+  color: #333;
+  cursor: pointer;
 }
 
-/* カード一覧グリッド */
-.card-grid {
+/* グリッド（メンバー・カード） */
+.grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin-top: 10px;
 }
 
-/* カード1枚 */
-.card-item {
+/* カードタイル */
+.card-tile {
   background: white;
   border-radius: 12px;
-  padding: 8px;
+  padding: 10px;
   text-align: center;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  cursor: pointer;
 }
 
-/* カード画像（縦長） */
+/* カード画像 */
 .card-img {
   width: 100%;
   aspect-ratio: 2 / 3;
@@ -81,28 +91,90 @@ input, select {
   background: #e8f6ff;
 }
 
-/* 最安値 */
-.card-price {
-  font-size: 12px;
+/* 所持枚数 */
+.card-count {
+  font-size: 14px;
   color: #3aa0d8;
   margin-top: 4px;
 }
+
+/* 最安値 */
+.card-price {
+  font-size: 14px;
+  color: #ff7b7b;
+  margin-top: 4px;
+}
+
+/* 空の画面 */
+.empty {
+  text-align: center;
+  color: #7aa0b8;
+  margin-top: 40px;
+  font-size: 18px;
+}
+
+/* カード詳細画面 */
+.detail-img {
+  width: 60%;
+  margin: 0 auto;
+  display: block;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #e8f6ff;
+}
+
+.detail-box {
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.detail-label {
+  font-size: 16px;
+  color: #3aa0d8;
+  margin-top: 10px;
+}
+
+.detail-value {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+/* 削除ボタン */
+.delete-btn {
+  background: #ff6b6b;
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  width: 100%;
+  margin-top: 20px;
+  border: none;
+  font-size: 16px;
+}/
 </style>
 </head>
+
 <body>
 
-<h1>推しカード管理</h1>
+<!-- ▼ 画面タイトル（動的に変わる） -->
+<h1 id="screen-title">グループ一覧</h1>
 
-<!-- グループ追加 -->
-<input id="groupName" placeholder="グループ名を入力">
-<button onclick="addGroup()">グループ追加</button>
+<!-- ▼ 戻るボタン（最初は非表示） -->
+<button id="back-button" style="display:none;" onclick="goBack()">← 戻る</button>
 
-<div id="groups"></div>
+<!-- ▼ メイン表示領域（ここにグループ・メンバー・カードが切り替わって表示される） -->
+<div id="main-view"></div>
+
+<!-- ▼ 追加ボタン（画面ごとに役割が変わる） -->
+<button id="add-button" onclick="handleAdd()">＋ 追加</button>
 
 <script>
-// ------------------------------
-// データ保存
-// ------------------------------
+/// ======================================================
+// データ保存・読み込み
+// ======================================================
 function save() {
   localStorage.setItem("oshiData", JSON.stringify(data));
 }
@@ -113,50 +185,272 @@ function load() {
 
 let data = load();
 
-// ------------------------------
+// ======================================================
+// 階層管理
+// ======================================================
+let currentScreen = "groups"; // groups / members / cards / detail
+let currentGroup = null;
+let currentMember = null;
+let currentCard = null;
+
+// ======================================================
+// 画面切り替え
+// ======================================================
+function render() {
+  const view = document.getElementById("main-view");
+  const title = document.getElementById("screen-title");
+  const backBtn = document.getElementById("back-button");
+  const addBtn = document.getElementById("add-button");
+
+  view.innerHTML = "";
+
+  // 戻るボタン表示制御
+  backBtn.style.display = currentScreen === "groups" ? "none" : "block";
+
+  // 画面ごとの描画
+  if (currentScreen === "groups") {
+    title.textContent = "グループ一覧";
+    addBtn.style.display = "block";
+    renderGroups(view);
+  }
+
+  if (currentScreen === "members") {
+    title.textContent = `${data.groups[currentGroup].name} のメンバー`;
+    addBtn.style.display = "block";
+    renderMembers(view);
+  }
+
+  if (currentScreen === "cards") {
+    title.textContent = `${data.groups[currentGroup].members[currentMember].name} のカード`;
+    addBtn.style.display = "block";
+    renderCards(view);
+  }
+
+  if (currentScreen === "detail") {
+    title.textContent = "カード詳細";
+    addBtn.style.display = "none";
+    renderCardDetail(view);
+  }
+}
+
+// ======================================================
+// 戻るボタン
+// ======================================================
+function goBack() {
+  if (currentScreen === "detail") currentScreen = "cards";
+  else if (currentScreen === "cards") currentScreen = "members";
+  else if (currentScreen === "members") currentScreen = "groups";
+
+  render();
+}
+
+// ======================================================
+// 追加ボタンの動作
+// ======================================================
+function handleAdd() {
+  if (currentScreen === "groups") addGroup();
+  if (currentScreen === "members") addMember();
+  if (currentScreen === "cards") addCard();
+}
+
+// ======================================================
+// グループ一覧
+// ======================================================
+function renderGroups(view) {
+  if (data.groups.length === 0) {
+    view.innerHTML = `<div class="empty">まだグループがありません</div>`;
+    return;
+  }
+
+  data.groups.forEach((g, gi) => {
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    tile.textContent = g.name;
+
+    tile.onclick = () => {
+      currentGroup = gi;
+      currentScreen = "members";
+      render();
+    };
+
+    // 削除可能条件：メンバー0人
+    if (g.members.length === 0) {
+      const del = document.createElement("button");
+      del.className = "delete-btn";
+      del.textContent = "削除";
+      del.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm("このグループを削除しますか？")) {
+          data.groups.splice(gi, 1);
+          save();
+          render();
+        }
+      };
+      tile.appendChild(del);
+    }
+
+    view.appendChild(tile);
+  });
+}
+
+// ======================================================
+// メンバー一覧
+// ======================================================
+function renderMembers(view) {
+  const group = data.groups[currentGroup];
+
+  if (group.members.length === 0) {
+    view.innerHTML = `<div class="empty">まだメンバーがいません</div>`;
+    return;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+
+  group.members.forEach((m, mi) => {
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    tile.textContent = m.name;
+
+    tile.onclick = () => {
+      currentMember = mi;
+      currentScreen = "cards";
+      render();
+    };
+
+    // 削除可能条件：カード0枚
+    if (m.cards.length === 0) {
+      const del = document.createElement("button");
+      del.className = "delete-btn";
+      del.textContent = "削除";
+      del.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm("このメンバーを削除しますか？")) {
+          group.members.splice(mi, 1);
+          save();
+          render();
+        }
+      };
+      tile.appendChild(del);
+    }
+
+    grid.appendChild(tile);
+  });
+
+  view.appendChild(grid);
+}
+
+// ======================================================
+// カード一覧
+// ======================================================
+function renderCards(view) {
+  const member = data.groups[currentGroup].members[currentMember];
+
+  if (member.cards.length === 0) {
+    view.innerHTML = `<div class="empty">まだカードがありません</div>`;
+    return;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+
+  member.cards.forEach((c, ci) => {
+    const tile = document.createElement("div");
+    tile.className = "card-tile";
+
+    tile.innerHTML = `
+      <img src="${c.img}" class="card-img">
+      <div>${c.name}</div>
+      <div class="card-count">所持：${c.count || 1}</div>
+      <div class="card-price">${c.price || "未取得"}</div>
+    `;
+
+    tile.onclick = () => {
+      currentCard = ci;
+      currentScreen = "detail";
+      render();
+    };
+
+    grid.appendChild(tile);
+  });
+
+  view.appendChild(grid);
+}
+
+// ======================================================
+// カード詳細画面
+// ======================================================
+function renderCardDetail(view) {
+  const card = data.groups[currentGroup].members[currentMember].cards[currentCard];
+
+  view.innerHTML = `
+    <img src="${card.img}" class="detail-img">
+
+    <div class="detail-box">
+      <div class="detail-label">カード名</div>
+      <div class="detail-value">${card.name}</div>
+
+      <div class="detail-label">所持枚数</div>
+      <div class="detail-value">${card.count || 1}</div>
+
+      <div class="detail-label">最安値</div>
+      <div class="detail-value">${card.price || "未取得"}</div>
+
+      <button onclick="searchMercari()" class="tile">メルカリで検索</button>
+      <button onclick="deleteCard()" class="delete-btn">カードを削除</button>
+    </div>
+  `;
+}
+
+// ======================================================
 // グループ追加
-// ------------------------------
+// ======================================================
 function addGroup() {
-  const name = document.getElementById("groupName").value;
+  const name = prompt("グループ名を入力");
   if (!name) return;
+
   data.groups.push({ name, members: [] });
   save();
   render();
 }
 
-// ------------------------------
+// ======================================================
 // メンバー追加
-// ------------------------------
-function addMember(gi) {
+// ======================================================
+function addMember() {
   const name = prompt("メンバー名を入力");
   if (!name) return;
-  data.groups[gi].members.push({ name, cards: [] });
+
+  data.groups[currentGroup].members.push({ name, cards: [] });
   save();
   render();
 }
 
-// ------------------------------
-// カード追加（画像付き）
-// ------------------------------
-function addCard(gi, mi) {
+// ======================================================
+// カード追加
+// ======================================================
+function addCard() {
   const name = prompt("カード名を入力");
   if (!name) return;
+
+  const count = Number(prompt("所持枚数を入力（数字）")) || 1;
 
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
 
-  input.onchange = function() {
+  input.onchange = function () {
     const file = input.files[0];
     const reader = new FileReader();
 
-    reader.onload = function(e) {
+    reader.onload = function (e) {
       const base64 = e.target.result;
 
-      data.groups[gi].members[mi].cards.push({
+      data.groups[currentGroup].members[currentMember].cards.push({
         name,
         img: base64,
-        price: "未取得"
+        price: "未取得",
+        count
       });
 
       save();
@@ -169,68 +463,41 @@ function addCard(gi, mi) {
   input.click();
 }
 
-// ------------------------------
-// メルカリ最安値取得
-// ------------------------------
-function fetchMercariPrice(cardName, gi, mi, ci) {
-  const query = encodeURIComponent(cardName);
+// ======================================================
+// カード削除
+// ======================================================
+function deleteCard() {
+  if (!confirm("このカードを削除しますか？")) return;
+
+  data.groups[currentGroup].members[currentMember].cards.splice(currentCard, 1);
+  save();
+
+  currentScreen = "cards";
+  render();
+}
+
+// ======================================================
+// メルカリ検索（メンバー名 + カード名）
+// ======================================================
+function searchMercari() {
+  const member = data.groups[currentGroup].members[currentMember];
+  const card = member.cards[currentCard];
+
+  const query = encodeURIComponent(`${member.name} ${card.name}`);
   const url = `https://www.mercari.com/jp/search/?keyword=${query}`;
+
   window.open(url, "_blank");
 
   const price = prompt("メルカリ最安値を入力（数字のみ）");
   if (price) {
-    data.groups[gi].members[mi].cards[ci].price = "¥" + price;
+    card.price = "¥" + price;
     save();
     render();
   }
 }
 
-// ------------------------------
-// 画面描画
-// ------------------------------
-function render() {
-  const container = document.getElementById("groups");
-  container.innerHTML = "";
-
-  data.groups.forEach((group, gi) => {
-    const g = document.createElement("div");
-    g.className = "group";
-    g.innerHTML = `<h2>${group.name}</h2>
-      <button onclick="addMember(${gi})">メンバー追加</button>`;
-
-    group.members.forEach((member, mi) => {
-      const m = document.createElement("div");
-      m.className = "member";
-      m.innerHTML = `<h3>${member.name}</h3>
-        <button onclick="addCard(${gi}, ${mi})">カード追加</button>`;
-
-      const grid = document.createElement("div");
-      grid.className = "card-grid";
-
-      member.cards.forEach((card, ci) => {
-        const item = document.createElement("div");
-        item.className = "card-item";
-
-        item.innerHTML = `
-          <img src="${card.img}" class="card-img">
-          <div class="card-price">${card.price}</div>
-          <button onclick="fetchMercariPrice('${card.name}', ${gi}, ${mi}, ${ci})">
-            最安値
-          </button>
-        `;
-
-        grid.appendChild(item);
-      });
-
-      m.appendChild(grid);
-      g.appendChild(m);
-    });
-
-    container.appendChild(g);
-  });
-}
-
-render();
+// ======================================================
+render();/
 </script>
 
 </body>
