@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>推しカード管理</title>
+
+<!-- PWA対応 -->
+<link rel="manifest" href="manifest.json">
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+
+<style>
+body {
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: #f5fbff;
+  margin: 0;
+  padding: 15px;
+  color: #333;
+}
+
+h1, h2, h3 {
+  color: #3aa0d8;
+  margin-bottom: 10px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 10px;
+  background: #6ec9ff;
+  color: white;
+  font-size: 16px;
+}
+
+input, select {
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #bde4ff;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.group, .member {
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* カード一覧グリッド */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* カード1枚 */
+.card-item {
+  background: white;
+  border-radius: 12px;
+  padding: 8px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* カード画像（縦長） */
+.card-img {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #e8f6ff;
+}
+
+/* 最安値 */
+.card-price {
+  font-size: 12px;
+  color: #3aa0d8;
+  margin-top: 4px;
+}
+</style>
+</head>
+<body>
+
+<h1>推しカード管理</h1>
+
+<!-- グループ追加 -->
+<input id="groupName" placeholder="グループ名を入力">
+<button onclick="addGroup()">グループ追加</button>
+
+<div id="groups"></div>
+
+<script>
+// ------------------------------
+// データ保存
+// ------------------------------
+function save() {
+  localStorage.setItem("oshiData", JSON.stringify(data));
+}
+function load() {
+  const saved = localStorage.getItem("oshiData");
+  return saved ? JSON.parse(saved) : { groups: [] };
+}
+
+let data = load();
+
+// ------------------------------
+// グループ追加
+// ------------------------------
+function addGroup() {
+  const name = document.getElementById("groupName").value;
+  if (!name) return;
+  data.groups.push({ name, members: [] });
+  save();
+  render();
+}
+
+// ------------------------------
+// メンバー追加
+// ------------------------------
+function addMember(gi) {
+  const name = prompt("メンバー名を入力");
+  if (!name) return;
+  data.groups[gi].members.push({ name, cards: [] });
+  save();
+  render();
+}
+
+// ------------------------------
+// カード追加（画像付き）
+// ------------------------------
+function addCard(gi, mi) {
+  const name = prompt("カード名を入力");
+  if (!name) return;
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+
+  input.onchange = function() {
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      const base64 = e.target.result;
+
+      data.groups[gi].members[mi].cards.push({
+        name,
+        img: base64,
+        price: "未取得"
+      });
+
+      save();
+      render();
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  input.click();
+}
+
+// ------------------------------
+// メルカリ最安値取得
+// ------------------------------
+function fetchMercariPrice(cardName, gi, mi, ci) {
+  const query = encodeURIComponent(cardName);
+  const url = `https://www.mercari.com/jp/search/?keyword=${query}`;
+  window.open(url, "_blank");
+
+  const price = prompt("メルカリ最安値を入力（数字のみ）");
+  if (price) {
+    data.groups[gi].members[mi].cards[ci].price = "¥" + price;
+    save();
+    render();
+  }
+}
+
+// ------------------------------
+// 画面描画
+// ------------------------------
+function render() {
+  const container = document.getElementById("groups");
+  container.innerHTML = "";
+
+  data.groups.forEach((group, gi) => {
+    const g = document.createElement("div");
+    g.className = "group";
+    g.innerHTML = `<h2>${group.name}</h2>
+      <button onclick="addMember(${gi})">メンバー追加</button>`;
+
+    group.members.forEach((member, mi) => {
+      const m = document.createElement("div");
+      m.className = "member";
+      m.innerHTML = `<h3>${member.name}</h3>
+        <button onclick="addCard(${gi}, ${mi})">カード追加</button>`;
+
+      const grid = document.createElement("div");
+      grid.className = "card-grid";
+
+      member.cards.forEach((card, ci) => {
+        const item = document.createElement("div");
+        item.className = "card-item";
+
+        item.innerHTML = `
+          <img src="${card.img}" class="card-img">
+          <div class="card-price">${card.price}</div>
+          <button onclick="fetchMercariPrice('${card.name}', ${gi}, ${mi}, ${ci})">
+            最安値
+          </button>
+        `;
+
+        grid.appendChild(item);
+      });
+
+      m.appendChild(grid);
+      g.appendChild(m);
+    });
+
+    container.appendChild(g);
+  });
+}
+
+render();
+</script>
+
+</body>
+</html>
