@@ -118,10 +118,8 @@ h1 {
 /* カード画像（縦短め） */
 .card-img {
   width: 100%;
-  aspect-ratio: 1 / 1.3;
-  object-fit: cover;
-  border-radius: 12px;
-  background: #e8f4ff;
+  border-radius: 6px; /* ← ここを小さくする */
+  box-shadow: 0 2px 8px rgba(107, 188, 255, 0.2);
 }
 
 /* 所持枚数 */
@@ -593,8 +591,8 @@ function exportMemberCards() {
   const cols = 5;
 
   // ★ 1つのカード枠のサイズ（少し小さめ）
-  const cardBoxW = 260;
-  const cardBoxH = 380;
+  const cardBoxW = 240;
+  const cardBoxH = 280;
 
   const rows = Math.ceil(cards.length / cols);
 
@@ -623,7 +621,7 @@ function exportMemberCards() {
       const boxY = row * cardBoxH;
 
       // ★ カード枠（薄ピンク背景＋角丸）
-      const radius = 22;
+      const radius = 16;
       ctx.fillStyle = "#ffeef7"; // 薄ピンク
       roundRect(ctx, boxX + 10, boxY + 10, cardBoxW - 20, cardBoxH - 20, radius);
       ctx.fill();
@@ -632,9 +630,14 @@ function exportMemberCards() {
       ctx.lineWidth = 3;
       ctx.stroke();
 
+      // キラキラを3つ散らす
+      drawSparkle(ctx, boxX + 40, boxY + 40, 6, "#ffd6f5");
+      drawSparkle(ctx, boxX + cardBoxW - 60, boxY + 80, 5, "#ffe2fa");
+      drawSparkle(ctx, boxX + 80, boxY + cardBoxH - 80, 7, "#ffccf7");
+
       // ★ 画像を比率維持で縮小して中央に配置
-      const maxW = cardBoxW - 60;
-      const maxH = 200;
+      const maxW = cardBoxW - 50;
+      const maxH = 140;
 
       let w = img.width;
       let h = img.height;
@@ -650,20 +653,20 @@ function exportMemberCards() {
 
       // ★ カード名（丸文字フォント）
       ctx.fillStyle = "#6bbcff";
-      ctx.font = "bold 20px 'Zen Maru Gothic'";
+      ctx.font = "bold 22px 'Zen Maru Gothic'";
       ctx.textAlign = "center";
-      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 270);
-
+      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 220);
+      
       // ★ 所持数バッジ（丸くて可愛い）
       ctx.fillStyle = "#6bbcff";
       ctx.beginPath();
-      ctx.arc(boxX + cardBoxW - 45, boxY + 45, 22, 0, Math.PI * 2);
+      ctx.arc(boxX + cardBoxW - 40, boxY + 40, 20, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 18px 'Zen Maru Gothic'";
+      ctx.font = "bold 20px 'Zen Maru Gothic'";
       ctx.textAlign = "center";
-      ctx.fillText("×" + (card.count || 1), boxX + cardBoxW - 45, boxY + 52);
+      ctx.fillText("×" + (card.count || 1), boxX + cardBoxW - 40, boxY + 47);
 
       index++;
 
@@ -688,6 +691,22 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+// キラキラを描く関数
+function drawSparkle(ctx, x, y, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, y - size);
+  ctx.lineTo(x + size * 0.3, y - size * 0.3);
+  ctx.lineTo(x + size, y);
+  ctx.lineTo(x + size * 0.3, y + size * 0.3);
+  ctx.lineTo(x, y + size);
+  ctx.lineTo(x - size * 0.3, y + size * 0.3);
+  ctx.lineTo(x - size, y);
+  ctx.lineTo(x - size * 0.3, y - size * 0.3);
+  ctx.closePath();
+  ctx.fill();
 }
 </script>
 
