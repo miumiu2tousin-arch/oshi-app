@@ -118,7 +118,7 @@ h1 {
 /* カード画像（縦短め） */
 .card-img {
   width: 100%;
-  border-radius: 6px; /* ← ここを小さくする */
+  border-radius: 4px; /* ← 角丸をほぼ無しに */
   box-shadow: 0 2px 8px rgba(107, 188, 255, 0.2);
 }
 
@@ -593,12 +593,12 @@ function exportMemberCards() {
     return;
   }
 
-  // ★ 5列で並べる
+  // ★ 5列
   const cols = 5;
 
   // ★ 外枠をさらに狭くして画像を大きく
-  const cardBoxW = 220;
-  const cardBoxH = 260;
+  const cardBoxW = 200;
+  const cardBoxH = 240;
 
   const rows = Math.ceil(cards.length / cols);
 
@@ -608,7 +608,6 @@ function exportMemberCards() {
 
   const ctx = canvas.getContext("2d");
 
-  // 背景
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -626,9 +625,9 @@ function exportMemberCards() {
       const boxY = row * cardBoxH;
 
       // ★ 枠（薄ピンク）
-      const radius = 16;
+      const radius = 14;
       ctx.fillStyle = "#ffeef7";
-      roundRect(ctx, boxX + 6, boxY + 6, cardBoxW - 12, cardBoxH - 12, radius);
+      roundRect(ctx, boxX + 4, boxY + 4, cardBoxW - 8, cardBoxH - 8, radius);
       ctx.fill();
 
       ctx.strokeStyle = "#ffc7dd";
@@ -636,8 +635,8 @@ function exportMemberCards() {
       ctx.stroke();
 
       // ★ 画像を最大限大きく（比率維持）
-      const maxW = cardBoxW - 40;
-      const maxH = 150;
+      const maxW = cardBoxW - 30;
+      const maxH = 140;
 
       let w = img.width;
       let h = img.height;
@@ -647,33 +646,33 @@ function exportMemberCards() {
       h *= scale;
 
       const imgX = boxX + (cardBoxW - w) / 2;
-      const imgY = boxY + 20;
+      const imgY = boxY + 18;
 
       ctx.drawImage(img, imgX, imgY, w, h);
 
       // ★ カード名（太字・大きめ）
       ctx.fillStyle = "#6bbcff";
-      ctx.font = "700 20px 'Zen Maru Gothic'";
+      ctx.font = "700 18px 'Zen Maru Gothic'";
       ctx.textAlign = "center";
-      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 210);
+      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 200);
 
       // ★ 所持数バッジ（2枚以上のときだけ）
       if ((card.count || 1) >= 2) {
         ctx.fillStyle = "#6bbcff";
         ctx.beginPath();
-        ctx.arc(boxX + cardBoxW - 35, boxY + 35, 18, 0, Math.PI * 2);
+        ctx.arc(imgX + w - 10, imgY + 10, 16, 0, Math.PI * 2); // ← 画像に被せる位置
         ctx.fill();
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "700 16px 'Zen Maru Gothic'";
+        ctx.font = "700 14px 'Zen Maru Gothic'";
         ctx.textAlign = "center";
-        ctx.fillText("×" + card.count, boxX + cardBoxW - 35, boxY + 40);
+        ctx.fillText("×" + card.count, imgX + w - 10, imgY + 15);
       }
 
       // ★ キラキラ（かわいさUP）
-      drawSparkle(ctx, boxX + 30, boxY + 30, 5, "#ffd6f5");
-      drawSparkle(ctx, boxX + cardBoxW - 60, boxY + 60, 4, "#ffe2fa");
-      drawSparkle(ctx, boxX + 70, boxY + cardBoxH - 60, 6, "#ffccf7");
+      drawSparkle(ctx, boxX + 25, boxY + 25, 4, "#ffd6f5");
+      drawSparkle(ctx, boxX + cardBoxW - 50, boxY + 50, 4, "#ffe2fa");
+      drawSparkle(ctx, boxX + 60, boxY + cardBoxH - 50, 5, "#ffccf7");
 
       index++;
 
@@ -688,7 +687,7 @@ function exportMemberCards() {
   });
 }
 
-// ★ キラキラ関数（そのまま使える）
+// ★ キラキラ関数
 function drawSparkle(ctx, x, y, size, color) {
   ctx.fillStyle = color;
   ctx.beginPath();
