@@ -223,6 +223,12 @@ button.tile:active {
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(107, 188, 255, 0.2);
 }
+
+/* 全体の文字を太くする */
+* {
+  font-weight: 700 !important;
+  font-family: "Zen Maru Gothic", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
 </style>
 </head>
 
@@ -590,20 +596,19 @@ function exportMemberCards() {
   // ★ 5列で並べる
   const cols = 5;
 
-  // ★ 1つのカード枠のサイズ（少し小さめ）
-  const cardBoxW = 240;
-  const cardBoxH = 280;
+  // ★ 外枠をさらに狭くして画像を大きく
+  const cardBoxW = 220;
+  const cardBoxH = 260;
 
   const rows = Math.ceil(cards.length / cols);
 
-  // ★ キャンバス全体のサイズ
   const canvas = document.createElement("canvas");
   canvas.width = cols * cardBoxW;
   canvas.height = rows * cardBoxH;
 
   const ctx = canvas.getContext("2d");
 
-  // ★ 全体背景（白）
+  // 背景
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -620,24 +625,19 @@ function exportMemberCards() {
       const boxX = col * cardBoxW;
       const boxY = row * cardBoxH;
 
-      // ★ カード枠（薄ピンク背景＋角丸）
+      // ★ 枠（薄ピンク）
       const radius = 16;
-      ctx.fillStyle = "#ffeef7"; // 薄ピンク
-      roundRect(ctx, boxX + 10, boxY + 10, cardBoxW - 20, cardBoxH - 20, radius);
+      ctx.fillStyle = "#ffeef7";
+      roundRect(ctx, boxX + 6, boxY + 6, cardBoxW - 12, cardBoxH - 12, radius);
       ctx.fill();
 
-      ctx.strokeStyle = "#ffc7dd"; // ピンク枠線
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#ffc7dd";
+      ctx.lineWidth = 2;
       ctx.stroke();
 
-      // キラキラを3つ散らす
-      drawSparkle(ctx, boxX + 40, boxY + 40, 6, "#ffd6f5");
-      drawSparkle(ctx, boxX + cardBoxW - 60, boxY + 80, 5, "#ffe2fa");
-      drawSparkle(ctx, boxX + 80, boxY + cardBoxH - 80, 7, "#ffccf7");
-
-      // ★ 画像を比率維持で縮小して中央に配置
-      const maxW = cardBoxW - 50;
-      const maxH = 140;
+      // ★ 画像を最大限大きく（比率維持）
+      const maxW = cardBoxW - 40;
+      const maxH = 150;
 
       let w = img.width;
       let h = img.height;
@@ -647,30 +647,36 @@ function exportMemberCards() {
       h *= scale;
 
       const imgX = boxX + (cardBoxW - w) / 2;
-      const imgY = boxY + 30;
+      const imgY = boxY + 20;
 
       ctx.drawImage(img, imgX, imgY, w, h);
 
-      // ★ カード名（丸文字フォント）
+      // ★ カード名（太字・大きめ）
       ctx.fillStyle = "#6bbcff";
-      ctx.font = "bold 22px 'Zen Maru Gothic'";
+      ctx.font = "700 20px 'Zen Maru Gothic'";
       ctx.textAlign = "center";
-      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 220);
-      
-      // ★ 所持数バッジ（丸くて可愛い）
-      ctx.fillStyle = "#6bbcff";
-      ctx.beginPath();
-      ctx.arc(boxX + cardBoxW - 40, boxY + 40, 20, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 210);
 
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 20px 'Zen Maru Gothic'";
-      ctx.textAlign = "center";
-      ctx.fillText("×" + (card.count || 1), boxX + cardBoxW - 40, boxY + 47);
+      // ★ 所持数バッジ（2枚以上のときだけ）
+      if ((card.count || 1) >= 2) {
+        ctx.fillStyle = "#6bbcff";
+        ctx.beginPath();
+        ctx.arc(boxX + cardBoxW - 35, boxY + 35, 18, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "700 16px 'Zen Maru Gothic'";
+        ctx.textAlign = "center";
+        ctx.fillText("×" + card.count, boxX + cardBoxW - 35, boxY + 40);
+      }
+
+      // ★ キラキラ（かわいさUP）
+      drawSparkle(ctx, boxX + 30, boxY + 30, 5, "#ffd6f5");
+      drawSparkle(ctx, boxX + cardBoxW - 60, boxY + 60, 4, "#ffe2fa");
+      drawSparkle(ctx, boxX + 70, boxY + cardBoxH - 60, 6, "#ffccf7");
 
       index++;
 
-      // ★ 全部描画し終わったら保存
       if (index === cards.length) {
         const url = canvas.toDataURL("image/png");
         const a = document.createElement("a");
@@ -682,18 +688,7 @@ function exportMemberCards() {
   });
 }
 
-// ★ 角丸四角形を描く関数（そのまま使える）
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-// キラキラを描く関数
+// ★ キラキラ関数（そのまま使える）
 function drawSparkle(ctx, x, y, size, color) {
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -707,6 +702,17 @@ function drawSparkle(ctx, x, y, size, color) {
   ctx.lineTo(x - size * 0.3, y - size * 0.3);
   ctx.closePath();
   ctx.fill();
+}
+
+// ★ 角丸枠
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }
 </script>
 
