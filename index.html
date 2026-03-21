@@ -385,6 +385,14 @@ function renderCards(view) {
     return;
   }
 
+  // ▼ まとめ画像ボタンを追加
+  const exportBtn = document.createElement("button");
+  exportBtn.className = "tile";
+  exportBtn.innerText = "まとめ画像を作る";
+  exportBtn.onclick = exportMemberCards;
+  view.appendChild(exportBtn);
+
+  // ▼ カード一覧
   const grid = document.createElement("div");
   grid.className = "grid";
 
@@ -534,6 +542,57 @@ function searchMercari() {
 
 // ======================================================
 render();
+
+function exportMemberCards() {
+  const member = data.groups[currentGroup].members[currentMember];
+  const cards = member.cards;
+
+  if (cards.length === 0) {
+    alert("カードがありません");
+    return;
+  }
+
+  let images = [];
+  cards.forEach(card => {
+    for (let i = 0; i < card.count; i++) {
+      images.push(card.img);
+    }
+  });
+
+  const cols = 4;
+  const size = 300;
+  const rows = Math.ceil(images.length / cols);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = cols * size;
+  canvas.height = rows * size;
+
+  const ctx = canvas.getContext("2d");
+
+  let index = 0;
+  images.forEach((src, i) => {
+    const img = new Image();
+    img.src = src;
+
+    img.onload = () => {
+      const x = (index % cols) * size;
+      const y = Math.floor(index / cols) * size;
+
+      ctx.drawImage(img, x, y, size, size);
+
+      index++;
+
+      if (index === images.length) {
+        const url = canvas.toDataURL("image/png");
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${member.name}_cards.png`;
+        a.click();
+      }
+    };
+  });
+}
 </script>
 
 </body>
