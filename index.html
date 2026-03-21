@@ -522,42 +522,6 @@ function startCropMode(cardName, count) {
   cropCanvas.height = cropImage.height;
 
   drawCropCanvas();
-
-  // ======== スマホ対応（タッチ操作） ========
-cropCanvas.addEventListener("touchstart", (e) => {
-  const rect = cropCanvas.getBoundingClientRect();
-  const touch = e.touches[0];
-  const x = touch.clientX - rect.left;
-  const y = touch.clientY - rect.top;
-
-  if (
-    x >= cropBox.x &&
-    x <= cropBox.x + cropBox.w &&
-    y >= cropBox.y &&
-    y <= cropBox.y + cropBox.h
-  ) {
-    dragging = true;
-    dragOffset.x = x - cropBox.x;
-    dragOffset.y = y - cropBox.y;
-  }
-});
-
-cropCanvas.addEventListener("touchmove", (e) => {
-  if (!dragging) return;
-
-  const rect = cropCanvas.getBoundingClientRect();
-  const touch = e.touches[0];
-
-  cropBox.x = touch.clientX - rect.left - dragOffset.x;
-  cropBox.y = touch.clientY - rect.top - dragOffset.y;
-
-  drawCropCanvas();
-});
-
-cropCanvas.addEventListener("touchend", () => {
-  dragging = false;
-});
-
   // ドラッグ操作
   cropCanvas.onmousedown = (e) => {
     const rect = cropCanvas.getBoundingClientRect();
@@ -685,6 +649,50 @@ function searchMercari() {
 
 // ======================================================
 render();
+
+// ======== スマホ対応（タッチ操作） ========
+function setupCropTouchEvents() {
+  const canvas = document.getElementById("crop-canvas");
+
+  canvas.addEventListener("touchstart", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+
+    if (
+      x >= cropBox.x &&
+      x <= cropBox.x + cropBox.w &&
+      y >= cropBox.y &&
+      y <= cropBox.y + cropBox.h
+    ) {
+      dragging = true;
+      dragOffset.x = x - cropBox.x;
+      dragOffset.y = y - cropBox.y;
+    }
+  });
+
+  canvas.addEventListener("touchmove", (e) => {
+    if (!dragging) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+
+    cropBox.x = touch.clientX - rect.left - dragOffset.x;
+    cropBox.y = touch.clientY - rect.top - dragOffset.y;
+
+    drawCropCanvas();
+  });
+
+  canvas.addEventListener("touchend", () => {
+    dragging = false;
+  });
+}
+
+// ページ読み込み時に1回だけ設定
+window.onload = () => {
+  setupCropTouchEvents();
+};
 </script>
 
 </body>
