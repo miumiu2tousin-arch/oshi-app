@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>推しカード管理</title>
@@ -14,9 +15,9 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <style>
-/* 全体背景（淡いパステルブルー＋キラキラ） */
+/* 全体デザイン（丸文字＋背景） */
 body {
-  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-family: "Zen Maru Gothic", "Hiragino Sans", "Noto Sans JP", sans-serif;
   background: linear-gradient(180deg, #eaf6ff, #f7fbff);
   background-attachment: fixed;
   margin: 0;
@@ -24,7 +25,7 @@ body {
   color: #333;
   position: relative;
 }
-
+  
 /* キラキラ背景（控えめ） */
 body::before {
   content: "";
@@ -191,16 +192,22 @@ h1 {
 
 /* かわいいボタン */
 button.tile {
-  background: #aee1ff;
+  background: #bfe6ff;
   color: #ffffff;
   border: none;
-  padding: 12px 20px;
-  border-radius: 16px;
+  padding: 14px 22px;
+  border-radius: 30px; /* ← 丸くした */
   font-size: 18px;
   font-weight: bold;
-  box-shadow: 0 4px 10px rgba(107, 188, 255, 0.3);
-  margin: 10px 0;
+  font-family: "Zen Maru Gothic", sans-serif;
+  box-shadow: 0 6px 14px rgba(107, 188, 255, 0.35);
+  margin: 12px 0;
   width: 90%;
+  transition: 0.2s;
+}
+
+button.tile:active {
+  transform: scale(0.96);
 }
 
 /* カード一覧のタイル */
@@ -582,17 +589,23 @@ function exportMemberCards() {
     return;
   }
 
-  const cols = 3; // 3列でかわいく並べる
-  const cardBoxW = 400; // 1つのカード枠の幅
-  const cardBoxH = 520; // 高さ（画像＋名前＋バッジ）
+  // ★ 5列で並べる
+  const cols = 5;
+
+  // ★ 1つのカード枠のサイズ（少し小さめ）
+  const cardBoxW = 260;
+  const cardBoxH = 380;
+
   const rows = Math.ceil(cards.length / cols);
 
+  // ★ キャンバス全体のサイズ
   const canvas = document.createElement("canvas");
   canvas.width = cols * cardBoxW;
   canvas.height = rows * cardBoxH;
 
   const ctx = canvas.getContext("2d");
 
+  // ★ 全体背景（白）
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -609,18 +622,20 @@ function exportMemberCards() {
       const boxX = col * cardBoxW;
       const boxY = row * cardBoxH;
 
-      // 白い角丸枠
-      const radius = 30;
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#d0e8ff";
-      ctx.lineWidth = 4;
+      // ★ カード枠（薄ピンク背景＋角丸）
+      const radius = 22;
+      ctx.fillStyle = "#ffeef7"; // 薄ピンク
+      roundRect(ctx, boxX + 10, boxY + 10, cardBoxW - 20, cardBoxH - 20, radius);
+      ctx.fill();
 
-      roundRect(ctx, boxX + 20, boxY + 20, cardBoxW - 40, cardBoxH - 40, radius);
+      ctx.strokeStyle = "#ffc7dd"; // ピンク枠線
+      ctx.lineWidth = 3;
       ctx.stroke();
 
-      // 画像を比率そのままで縮小して中央に配置
-      const maxW = cardBoxW - 80;
-      const maxH = 300;
+      // ★ 画像を比率維持で縮小して中央に配置
+      const maxW = cardBoxW - 60;
+      const maxH = 200;
+
       let w = img.width;
       let h = img.height;
 
@@ -629,29 +644,30 @@ function exportMemberCards() {
       h *= scale;
 
       const imgX = boxX + (cardBoxW - w) / 2;
-      const imgY = boxY + 40;
+      const imgY = boxY + 30;
 
       ctx.drawImage(img, imgX, imgY, w, h);
 
-      // カード名
+      // ★ カード名（丸文字フォント）
       ctx.fillStyle = "#6bbcff";
-      ctx.font = "bold 28px sans-serif";
+      ctx.font = "bold 20px 'Zen Maru Gothic'";
       ctx.textAlign = "center";
-      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 380);
+      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 270);
 
-      // 所持数バッジ
+      // ★ 所持数バッジ（丸くて可愛い）
       ctx.fillStyle = "#6bbcff";
       ctx.beginPath();
-      ctx.arc(boxX + cardBoxW - 70, boxY + 70, 30, 0, Math.PI * 2);
+      ctx.arc(boxX + cardBoxW - 45, boxY + 45, 22, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 26px sans-serif";
+      ctx.font = "bold 18px 'Zen Maru Gothic'";
       ctx.textAlign = "center";
-      ctx.fillText("×" + (card.count || 1), boxX + cardBoxW - 70, boxY + 80);
+      ctx.fillText("×" + (card.count || 1), boxX + cardBoxW - 45, boxY + 52);
 
       index++;
 
+      // ★ 全部描画し終わったら保存
       if (index === cards.length) {
         const url = canvas.toDataURL("image/png");
         const a = document.createElement("a");
@@ -663,7 +679,7 @@ function exportMemberCards() {
   });
 }
 
-// 角丸四角形を描く関数
+// ★ 角丸四角形を描く関数（そのまま使える）
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -672,7 +688,6 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
-  ctx.fill();
 }
 </script>
 
