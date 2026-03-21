@@ -14,60 +14,87 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <style>
+/* 全体背景（淡いパステルブルー＋キラキラ） */
 body {
   font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
-  background: #f5fbff;
+  background: linear-gradient(180deg, #eaf6ff, #f7fbff);
+  background-attachment: fixed;
   margin: 0;
   padding: 15px;
   color: #333;
+  position: relative;
+}
+
+/* キラキラ背景（控えめ） */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.6) 2px, transparent 3px),
+    radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 3px);
+  background-size: 120px 120px, 200px 200px;
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 /* タイトル */
 h1 {
-  color: #3aa0d8;
-  margin-bottom: 10px;
-  font-size: 24px;
+  color: #6bbcff;
+  font-size: 26px;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(150, 200, 255, 0.6);
+  margin-bottom: 15px;
 }
 
 /* 戻るボタン */
 #back-button {
-  background: #b5dfff;
-  color: #005a8d;
-  border-radius: 8px;
-  padding: 8px 12px;
+  background: #d8ecff;
+  color: #3a7bbf;
+  border-radius: 12px;
+  padding: 10px 14px;
   width: auto;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  border: none;
+  box-shadow: 0 3px 8px rgba(150, 200, 255, 0.4);
 }
 
 /* 追加ボタン */
 #add-button {
   width: 100%;
-  padding: 14px;
+  padding: 16px;
   border: none;
-  border-radius: 10px;
-  background: #6ec9ff;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #9fd8ff, #6bbcff);
   color: white;
   font-size: 18px;
   margin-top: 20px;
+  box-shadow: 0 4px 12px rgba(120, 180, 255, 0.5);
 }
 
-/* タイル共通 */
+/* タイル共通（ぷにっと丸い） */
 .tile {
   background: white;
-  padding: 15px;
-  border-radius: 12px;
+  padding: 18px;
+  border-radius: 20px;
   margin-bottom: 15px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(150, 200, 255, 0.4);
   text-align: center;
   font-size: 18px;
   color: #333;
   cursor: pointer;
+  transition: transform 0.15s ease;
 }
 
-/* グリッド（メンバー・カード） */
+.tile:active {
+  transform: scale(0.97);
+}
+
+/* グリッド（4列） */
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   margin-top: 10px;
 }
@@ -75,32 +102,37 @@ h1 {
 /* カードタイル */
 .card-tile {
   background: white;
-  border-radius: 12px;
+  border-radius: 18px;
   padding: 10px;
   text-align: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(150, 200, 255, 0.4);
   cursor: pointer;
+  transition: transform 0.15s ease;
 }
 
-/* カード画像 */
+.card-tile:active {
+  transform: scale(0.97);
+}
+
+/* カード画像（縦短め） */
 .card-img {
   width: 100%;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 1 / 1.3;
   object-fit: cover;
-  border-radius: 8px;
-  background: #e8f6ff;
+  border-radius: 12px;
+  background: #e8f4ff;
 }
 
 /* 所持枚数 */
 .card-count {
-  font-size: 14px;
-  color: #3aa0d8;
+  font-size: 13px;
+  color: #6bbcff;
   margin-top: 4px;
 }
 
 /* 最安値 */
 .card-price {
-  font-size: 14px;
+  font-size: 13px;
   color: #ff7b7b;
   margin-top: 4px;
 }
@@ -108,33 +140,34 @@ h1 {
 /* 空の画面 */
 .empty {
   text-align: center;
-  color: #7aa0b8;
+  color: #8fb3d1;
   margin-top: 40px;
   font-size: 18px;
 }
 
 /* カード詳細画面 */
 .detail-img {
-  width: 60%;
+  width: 70%;
   margin: 0 auto;
   display: block;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 1 / 1.4;
   object-fit: cover;
-  border-radius: 12px;
-  background: #e8f6ff;
+  border-radius: 18px;
+  background: #e8f4ff;
+  box-shadow: 0 4px 12px rgba(150, 200, 255, 0.4);
 }
 
 .detail-box {
   background: white;
-  padding: 15px;
-  border-radius: 12px;
-  margin-top: 15px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  padding: 18px;
+  border-radius: 20px;
+  margin-top: 20px;
+  box-shadow: 0 4px 12px rgba(150, 200, 255, 0.4);
 }
 
 .detail-label {
   font-size: 16px;
-  color: #3aa0d8;
+  color: #6bbcff;
   margin-top: 10px;
 }
 
@@ -145,14 +178,15 @@ h1 {
 
 /* 削除ボタン */
 .delete-btn {
-  background: #ff6b6b;
+  background: #ff8b8b;
   color: white;
-  padding: 12px;
-  border-radius: 10px;
+  padding: 14px;
+  border-radius: 16px;
   width: 100%;
   margin-top: 20px;
   border: none;
   font-size: 16px;
+  box-shadow: 0 4px 12px rgba(255, 150, 150, 0.4);
 }
 </style>
 </head>
@@ -168,10 +202,29 @@ h1 {
 <!-- ▼ メイン表示領域（ここにグループ・メンバー・カードが切り替わって表示される） -->
 <div id="main-view"></div>
 
+<!-- ▼ トリミング画面（最初は非表示） -->
+<div id="crop-view" style="display:none; text-align:center;">
+  <h2 style="color:#6bbcff;">画像を切り抜く</h2>
+
+  <canvas id="crop-canvas" style="max-width:100%; border-radius:12px;"></canvas>
+
+  <div style="margin-top:20px;">
+    <button id="crop-confirm" class="tile">切り抜く</button>
+    <button id="crop-cancel" class="delete-btn">キャンセル</button>
+  </div>
+</div>
+
 <!-- ▼ 追加ボタン（画面ごとに役割が変わる） -->
 <button id="add-button" onclick="handleAdd()">＋ 追加</button>
 
 <script>
+let cropImage = null;     // 読み込んだ画像
+let cropCanvas = null;    // canvas
+let cropCtx = null;       // canvas context
+let cropBox = { x: 50, y: 50, w: 200, h: 280 }; // トレカ比率 1:1.4
+let dragging = false;
+let dragOffset = { x: 0, y: 0 };
+  
 // ======================================================
 // データ保存・読み込み
 // ======================================================
@@ -444,17 +497,11 @@ function addCard() {
     const reader = new FileReader();
 
     reader.onload = function (e) {
-      const base64 = e.target.result;
-
-      data.groups[currentGroup].members[currentMember].cards.push({
-        name,
-        img: base64,
-        price: "未取得",
-        count
-      });
-
-      save();
-      render();
+      cropImage = new Image();
+      cropImage.onload = () => {
+        startCropMode(name, count);
+      };
+      cropImage.src = e.target.result;
     };
 
     reader.readAsDataURL(file);
@@ -463,6 +510,111 @@ function addCard() {
   input.click();
 }
 
+function startCropMode(cardName, count) {
+  document.getElementById("main-view").style.display = "none";
+  document.getElementById("add-button").style.display = "none";
+  document.getElementById("crop-view").style.display = "block";
+
+  cropCanvas = document.getElementById("crop-canvas");
+  cropCtx = cropCanvas.getContext("2d");
+
+  cropCanvas.width = cropImage.width;
+  cropCanvas.height = cropImage.height;
+
+  drawCropCanvas();
+
+  // ドラッグ操作
+  cropCanvas.onmousedown = (e) => {
+    const rect = cropCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (
+      x >= cropBox.x &&
+      x <= cropBox.x + cropBox.w &&
+      y >= cropBox.y &&
+      y <= cropBox.y + cropBox.h
+    ) {
+      dragging = true;
+      dragOffset.x = x - cropBox.x;
+      dragOffset.y = y - cropBox.y;
+    }
+  };
+
+  cropCanvas.onmousemove = (e) => {
+    if (!dragging) return;
+
+    const rect = cropCanvas.getBoundingClientRect();
+    cropBox.x = e.clientX - rect.left - dragOffset.x;
+    cropBox.y = e.clientY - rect.top - dragOffset.y;
+
+    drawCropCanvas();
+  };
+
+  cropCanvas.onmouseup = () => (dragging = false);
+  cropCanvas.onmouseleave = () => (dragging = false);
+
+  // 切り抜きボタン
+  document.getElementById("crop-confirm").onclick = () => {
+    finishCrop(cardName, count);
+  };
+
+  // キャンセル
+  document.getElementById("crop-cancel").onclick = () => {
+    document.getElementById("crop-view").style.display = "none";
+    document.getElementById("main-view").style.display = "block";
+    document.getElementById("add-button").style.display = "block";
+  };
+}
+
+function drawCropCanvas() {
+  cropCtx.drawImage(cropImage, 0, 0);
+
+  // 枠の外を暗くする
+  cropCtx.fillStyle = "rgba(0,0,0,0.4)";
+  cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+  // 切り抜き枠部分だけ透明に
+  cropCtx.clearRect(cropBox.x, cropBox.y, cropBox.w, cropBox.h);
+
+  // 枠線
+  cropCtx.strokeStyle = "#6bbcff";
+  cropCtx.lineWidth = 4;
+  cropCtx.strokeRect(cropBox.x, cropBox.y, cropBox.w, cropBox.h);
+}
+
+function finishCrop(cardName, count) {
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = cropBox.w;
+  tempCanvas.height = cropBox.h;
+
+  const tctx = tempCanvas.getContext("2d");
+  tctx.drawImage(
+    cropImage,
+    cropBox.x, cropBox.y, cropBox.w, cropBox.h,
+    0, 0, cropBox.w, cropBox.h
+  );
+
+  const base64 = tempCanvas.toDataURL("image/png");
+
+  data.groups[currentGroup].members[currentMember].cards.push({
+    name: cardName,
+    img: base64,
+    price: "未取得",
+    count
+  });
+
+  save();
+
+  // 画面を戻す
+  document.getElementById("crop-view").style.display = "none";
+  document.getElementById("main-view").style.display = "block";
+  document.getElementById("add-button").style.display = "block";
+
+  render();
+}
+
+  
 // ======================================================
 // カード削除
 // ======================================================
