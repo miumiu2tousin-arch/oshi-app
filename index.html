@@ -576,8 +576,8 @@ function exportMemberCards() {
   const cols = 5;
 
   // ★ 外枠をさらに狭くして画像を大きく
-  const cardBoxW = 200;
-  const cardBoxH = 240;
+  const cardBoxW = 180;
+  const cardBoxH = 220;
 
   const rows = Math.ceil(cards.length / cols);
 
@@ -614,8 +614,8 @@ function exportMemberCards() {
       ctx.stroke();
 
       // ★ 画像を最大限大きく（比率維持）
-      const maxW = cardBoxW - 30;
-      const maxH = 140;
+      const maxW = cardBoxW - 20;
+      const maxH = 160;
 
       let w = img.width;
       let h = img.height;
@@ -627,19 +627,35 @@ function exportMemberCards() {
       const imgX = boxX + (cardBoxW - w) / 2;
       const imgY = boxY + 18;
 
-      ctx.drawImage(img, imgX, imgY, w, h);
+     // 画像を角丸で描画する
+      const imgRadius = 4; // ← カード一覧と同じくらいの丸み
+      
+      ctx.save(); // いったん状態を保存
+      
+      ctx.beginPath();
+      ctx.moveTo(imgX + imgRadius, imgY);
+      ctx.arcTo(imgX + w, imgY, imgX + w, imgY + h, imgRadius);
+      ctx.arcTo(imgX + w, imgY + h, imgX, imgY + h, imgRadius);
+      ctx.arcTo(imgX, imgY + h, imgX, imgY, imgRadius);
+      ctx.arcTo(imgX, imgY, imgX + w, imgY, imgRadius);
+      ctx.closePath();
+      ctx.clip(); // この中だけに描画されるようにする
+      
+      ctx.drawImage(img, imgX, imgY, w, h); // 角丸マスクの中に画像を描く
+      
+      ctx.restore(); // マスクを解除
 
       // ★ カード名（太字・大きめ）
       ctx.fillStyle = "#6bbcff";
       ctx.font = "700 18px 'Zen Maru Gothic'";
       ctx.textAlign = "center";
-      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 200);
+      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 185);
 
       // ★ 所持数バッジ（2枚以上のときだけ）
       if ((card.count || 1) >= 2) {
         ctx.fillStyle = "#6bbcff";
         ctx.beginPath();
-        ctx.arc(imgX + w - 10, imgY + 10, 16, 0, Math.PI * 2); // ← 画像に被せる位置
+        ctx.arc(imgX + w - 8, imgY + 8, 15, 0, Math.PI * 2); // ← 画像に被せる位置
         ctx.fill();
 
         ctx.fillStyle = "#ffffff";
