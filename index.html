@@ -251,24 +251,33 @@ function render() {
 
   view.innerHTML = "";
 
-  // ★ グループ0個で members に入らない
-  if (currentScreen === "members" && data.groups.length === 0) {
+  // ★ グループ0個で members/cards/detail に入らない
+  if ((currentScreen === "members" || currentScreen === "cards" || currentScreen === "detail")
+      && data.groups.length === 0) {
     currentScreen = "groups";
   }
 
-  // ★ currentGroup が null のとき members を描画しない
-  if (currentScreen === "members") {
-    if (currentGroup === null || !data.groups[currentGroup]) {
-      currentScreen = "groups";
-      render();
-      return;
-    }
+  // ★ currentGroup が null のとき members/cards/detail に入らない
+  if ((currentScreen === "members" || currentScreen === "cards" || currentScreen === "detail")
+      && (currentGroup === null || !data.groups[currentGroup])) {
+    currentScreen = "groups";
   }
 
-  // 戻るボタン表示制御
+  // ★ currentMember が null のとき cards/detail に入らない
+  if ((currentScreen === "cards" || currentScreen === "detail")
+      && (currentMember === null || !data.groups[currentGroup].members[currentMember])) {
+    currentScreen = "members";
+  }
+
+  // ★ currentCard が null のとき detail に入らない
+  if (currentScreen === "detail"
+      && (currentCard === null || !data.groups[currentGroup].members[currentMember].cards[currentCard])) {
+    currentScreen = "cards";
+  }
+
+  // ▼ ここから画面描画
   backBtn.style.display = currentScreen === "groups" ? "none" : "block";
 
-  // 画面ごとの描画
   if (currentScreen === "groups") {
     title.textContent = "グループ一覧";
     addBtn.style.display = "block";
