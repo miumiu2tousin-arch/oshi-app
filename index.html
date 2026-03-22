@@ -100,6 +100,15 @@
     border-radius: 14px;
     margin-top: 20px;
   }
+
+  .sort-box button {
+    flex: 1;
+    padding: 10px;
+    background: #bfe0ff;
+    border: none;
+    border-radius: 12px;
+    margin-bottom: 12px;
+  }
 </style>
 </head>
 
@@ -130,6 +139,7 @@ let currentScreen = "groups";
 let currentGroup = null;
 let currentMember = null;
 let currentCard = null;
+let currentSort = "none";
 
 /* -------------------------
    画面描画
@@ -196,7 +206,10 @@ function renderGroups(view) {
   data.groups.forEach((g, i) => {
     const t = document.createElement("div");
     t.className = "tile";
-    t.textContent = g.name;
+    t.innerHTML = `
+      <div>${g.name}</div>
+      ${g.members.length === 0 ? `<button class="delete-btn" onclick="deleteGroup(${i});event.stopPropagation();">削除</button>` : ""}
+    `;
     t.onclick = () => {
       currentGroup = i;
       currentScreen = "members";
@@ -223,7 +236,10 @@ function renderMembers(view) {
   group.members.forEach((m, i) => {
     const t = document.createElement("div");
     t.className = "tile";
-    t.textContent = m.name;
+    t.innerHTML = `
+      <div>${m.name}</div>
+      ${m.cards.length === 0 ? `<button class="delete-btn" onclick="deleteMember(${i});event.stopPropagation();">削除</button>` : ""}
+    `;
     t.onclick = () => {
       currentMember = i;
       currentScreen = "cards";
@@ -246,10 +262,37 @@ function renderCards(view) {
     return;
   }
 
+  /* 並び替えボタン */
+  const sortBox = document.createElement("div");
+  sortBox.className = "sort-box";
+  sortBox.style.display = "flex";
+  sortBox.style.gap = "10px";
+
+  sortBox.innerHTML = `
+    <button onclick="currentSort='name';render()">名前順</button>
+    <button onclick="currentSort='price';render()">最安値順</button>
+    <button onclick="exportMemberCards()">まとめ画像</button>
+  `;
+  view.appendChild(sortBox);
+
+  /* ソート処理 */
+  let cards = member.cards.map((c, i) => ({ ...c, _index: i }));
+
+  if (currentSort === "name") {
+    cards.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  }
+  if (currentSort === "price") {
+    cards.sort((a, b) => {
+      const pa = a.price === "未取得" ? 9999999 : Number(a.price.replace("¥",""));
+      const pb = b.price === "未取得" ? 9999999 : Number(b.price.replace("¥",""));
+      return pa - pb;
+    });
+  }
+
   const grid = document.createElement("div");
   grid.className = "grid";
 
-  member.cards.forEach((c, i) => {
+  cards.forEach((c) => {
     const t = document.createElement("div");
     t.className = "card-tile";
     t.innerHTML = `
@@ -259,7 +302,7 @@ function renderCards(view) {
       <div>${c.price}</div>
     `;
     t.onclick = () => {
-      currentCard = i;
+      currentCard = c._index;
       currentScreen = "detail";
       render();
     };
@@ -279,12 +322,24 @@ function renderDetail(view) {
     <img src="${card.img}" class="detail-img">
     <div class="detail-box">
       <div>カード名：${card.name}</div>
-      <div>所持枚数：${card.count}</div>
+      <div>所持枚数：${card.count} <button onclick="editCount()">編集</button></div>
       <div>最安値：${card.price}</div>
       <button onclick="searchMercari()" class="tile">メルカリで検索</button>
       <button onclick="deleteCard()" class="delete-btn">カードを削除</button>
     </div>
   `;
+}
+
+/* -------------------------
+   編集：所持枚数
+------------------------- */
+function editCount() {
+  const card = data.groups[currentGroup].members[currentMember].cards[currentCard];
+  const n = Number(prompt("所持枚数を入力", card.count));
+  if (!n) return;
+  card.count = n;
+  save();
+  render();
 }
 
 /* -------------------------
@@ -338,6 +393,20 @@ function addCard() {
 /* -------------------------
    削除
 ------------------------- */
+function deleteGroup(i) {
+  if (!confirm("このグループを削除しますか？")) return;
+  data.groups.splice(i, 1);
+  save();
+  render();
+}
+
+function deleteMember(i) {
+  if (!confirm("このメンバーを削除しますか？")) return;
+  data.groups[currentGroup].members.splice(i, 1);
+  save();
+  render();
+}
+
 function deleteCard() {
   if (!confirm("削除しますか？")) return;
   data.groups[currentGroup].members[currentMember].cards.splice(currentCard, 1);
@@ -361,6 +430,80 @@ function searchMercari() {
     save();
     render();
   }
+}
+
+/* -------------------------
+   まとめ画像生成
+------------------------- */
+function exportMemberCards() {
+  const member = data.groups[currentGroup].members[currentMember];
+  const cards = member.cards;
+
+  if (cards.length === 0) {
+    alert("カードがありません");
+    return;
+  }
+
+  const cols = 5;
+  const cardW = 160;
+  const cardH = 200;
+  const rows = Math.ceil(cards.length / cols);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = cols * cardW;
+  canvas.height = rows * cardH;
+
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  let index = 0;
+
+  cards.forEach((card) => {
+    const img = new Image();
+    img.src = card.img;
+
+    img.onload = () => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+
+      const x = col * cardW;
+      const y = row * cardH;
+
+      const maxW = cardW;
+      const maxH = cardH - 30;
+
+      let w = img.width;
+      let h = img.height;
+
+      const scale = Math.min(maxW / w, maxH / h);
+      w *= scale;
+      h *= scale;
+
+      const ix = x + (cardW - w) / 2;
+      const iy = y;
+
+      ctx.drawImage(img, ix, iy, w, h);
+
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fillRect(ix, iy + h - 28, w, 28);
+
+      ctx.fillStyle = "#6bbcff";
+      ctx.font = "16px 'Zen Maru Gothic'";
+      ctx.textAlign = "center";
+      ctx.fillText(card.name, ix + w / 2, iy + h - 8);
+
+      index++;
+
+      if (index === cards.length) {
+        const url = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${member.name}_cards.png`;
+        a.click();
+      }
+    };
+  });
 }
 
 render();
