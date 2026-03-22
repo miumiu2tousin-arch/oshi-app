@@ -251,55 +251,73 @@ function render() {
 
   view.innerHTML = "";
 
-  // ★ グループ0個で members/cards/detail に入らない
-  if ((currentScreen === "members" || currentScreen === "cards" || currentScreen === "detail")
-      && data.groups.length === 0) {
-    currentScreen = "groups";
+  // ★ まず最初に「存在チェック」を全部やる
+  if (currentScreen !== "groups") {
+    // グループが存在しない → groups に戻す
+    if (!data.groups || data.groups.length === 0) {
+      currentScreen = "groups";
+    }
   }
 
-  // ★ currentGroup が null のとき members/cards/detail に入らない
-  if ((currentScreen === "members" || currentScreen === "cards" || currentScreen === "detail")
-      && (currentGroup === null || !data.groups[currentGroup])) {
-    currentScreen = "groups";
+  if (currentScreen === "members") {
+    if (currentGroup === null || !data.groups[currentGroup]) {
+      currentScreen = "groups";
+    }
   }
 
-  // ★ currentMember が null のとき cards/detail に入らない
-  if ((currentScreen === "cards" || currentScreen === "detail")
-      && (currentMember === null || !data.groups[currentGroup].members[currentMember])) {
-    currentScreen = "members";
+  if (currentScreen === "cards") {
+    if (
+      currentGroup === null ||
+      !data.groups[currentGroup] ||
+      currentMember === null ||
+      !data.groups[currentGroup].members[currentMember]
+    ) {
+      currentScreen = "members";
+    }
   }
 
-  // ★ currentCard が null のとき detail に入らない
-  if (currentScreen === "detail"
-      && (currentCard === null || !data.groups[currentGroup].members[currentMember].cards[currentCard])) {
-    currentScreen = "cards";
+  if (currentScreen === "detail") {
+    if (
+      currentGroup === null ||
+      !data.groups[currentGroup] ||
+      currentMember === null ||
+      !data.groups[currentGroup].members[currentMember] ||
+      currentCard === null ||
+      !data.groups[currentGroup].members[currentMember].cards[currentCard]
+    ) {
+      currentScreen = "cards";
+    }
   }
 
-  // ▼ ここから画面描画
+  // ★ ここから画面描画（安全）
   backBtn.style.display = currentScreen === "groups" ? "none" : "block";
 
   if (currentScreen === "groups") {
     title.textContent = "グループ一覧";
     addBtn.style.display = "block";
     renderGroups(view);
+    return;
   }
 
   if (currentScreen === "members") {
     title.textContent = `${data.groups[currentGroup].name} のメンバー`;
     addBtn.style.display = "block";
     renderMembers(view);
+    return;
   }
 
   if (currentScreen === "cards") {
     title.textContent = `${data.groups[currentGroup].members[currentMember].name} のカード`;
     addBtn.style.display = "block";
     renderCards(view);
+    return;
   }
 
   if (currentScreen === "detail") {
     title.textContent = "カード詳細";
     addBtn.style.display = "none";
     renderCardDetail(view);
+    return;
   }
 }
 
