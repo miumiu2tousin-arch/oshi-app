@@ -562,7 +562,7 @@ function searchMercari() {
 }
 
 /* -------------------------
-   まとめ画像生成（名前＋所持数表示）
+   まとめ画像生成（帯＋バッジ＋大きい画像＋余白最小）
 ------------------------- */
 async function exportMemberCards() {
   if (!dbReady) {
@@ -578,14 +578,16 @@ async function exportMemberCards() {
     return;
   }
 
-  const cols = 5;
-  const cardW = 180;
-  const cardH = 230;
+  /* レイアウト設定 */
+  const cols = 5;              // 1行の枚数
+  const cardW = 200;           // カード幅（大きく）
+  const cardH = 260;           // カード高さ（大きく）
+  const padding = 5;           // 余白を最小限に
   const rows = Math.ceil(cards.length / cols);
 
   const canvas = document.createElement("canvas");
-  canvas.width = cols * cardW;
-  canvas.height = rows * cardH;
+  canvas.width = cols * (cardW + padding) - padding;
+  canvas.height = rows * (cardH + padding) - padding;
 
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
@@ -606,10 +608,12 @@ async function exportMemberCards() {
 
     const col = index % cols;
     const row = Math.floor(index / cols);
-    const x = col * cardW;
-    const y = row * cardH;
 
-    const maxW = cardW - 20;
+    const x = col * (cardW + padding);
+    const y = row * (cardH + padding);
+
+    /* 画像を大きく表示（上下に帯を置くため少し縮小） */
+    const maxW = cardW - 10;
     const maxH = cardH - 60;
 
     let w = img.width;
@@ -623,17 +627,30 @@ async function exportMemberCards() {
 
     ctx.drawImage(img, ix, iy, w, h);
 
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.fillRect(x + 10, y + cardH - 50, cardW - 20, 40);
+    /* 名前帯（白の半透明） */
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillRect(x, y, cardW, 32);
 
-    ctx.fillStyle = "#6bbcff";
+    ctx.fillStyle = "#4a7fc9";
+    ctx.font = "16px 'Zen Maru Gothic'";
+    ctx.textAlign = "center";
+    ctx.fillText(card.name, x + cardW / 2, y + 22);
+
+    /* 所持数バッジ（角丸四角） */
+    const badgeW = 48;
+    const badgeH = 26;
+    const bx = x + cardW - badgeW - 6;
+    const by = y + 6;
+
+    ctx.fillStyle = "#7bbcff";
+    ctx.beginPath();
+    ctx.roundRect(bx, by, badgeW, badgeH, 8);
+    ctx.fill();
+
+    ctx.fillStyle = "#ffffff";
     ctx.font = "14px 'Zen Maru Gothic'";
     ctx.textAlign = "center";
-    ctx.fillText(card.name, x + cardW / 2, y + cardH - 30);
-
-    ctx.fillStyle = "#555";
-    ctx.font = "12px 'Zen Maru Gothic'";
-    ctx.fillText(`所持：${card.count}`, x + cardW / 2, y + cardH - 12);
+    ctx.fillText(`×${card.count}`, bx + badgeW / 2, by + 18);
   }
 
   const url = canvas.toDataURL("image/png");
