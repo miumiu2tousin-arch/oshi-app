@@ -7,7 +7,7 @@
 
 <style>
   body {
-    font-family: "Zen Maru Gothic", sans-serif;
+    font-family: "Zen Maru Gothic", system-ui, -apple-system, sans-serif;
     background: #f4f8ff;
     margin: 0;
     padding: 16px;
@@ -101,13 +101,27 @@
     margin-top: 20px;
   }
 
+  .sort-box {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
   .sort-box button {
     flex: 1;
     padding: 10px;
     background: #bfe0ff;
     border: none;
     border-radius: 12px;
-    margin-bottom: 12px;
+  }
+
+  .small-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #ffd4d4;
+    margin-top: 6px;
   }
 </style>
 </head>
@@ -116,12 +130,69 @@
 
 <h1 id="screen-title">グループ一覧</h1>
 <button id="back-button" onclick="goBack()">← 戻る</button>
-<div id="main-view"></div>
+<div id="main-view">読み込み中...</div>
 <button id="add-button" onclick="handleAdd()">＋ 追加</button>
 
 <script>
 /* -------------------------
-   データ保存
+   IndexedDB 初期化
+------------------------- */
+let db = null;
+let dbReady = false;
+
+const request = indexedDB.open("oshiCardDB", 1);
+
+request.onupgradeneeded = function (event) {
+  db = event.target.result;
+  if (!db.objectStoreNames.contains("images")) {
+    db.createObjectStore("images", { keyPath: "id", autoIncrement: true });
+  }
+};
+
+request.onsuccess = function (event) {
+  db = event.target.result;
+  dbReady = true;
+  initApp();
+};
+
+request.onerror = function () {
+  alert("IndexedDB の初期化に失敗しました");
+};
+
+/* -------------------------
+   IndexedDB 用関数
+------------------------- */
+function saveImageToDB(base64) {
+  return new Promise((resolve, reject) => {
+    if (!dbReady) {
+      reject("DB not ready");
+      return;
+    }
+    const tx = db.transaction("images", "readwrite");
+    const store = tx.objectStore("images");
+    const data = { img: base64 };
+    const req = store.add(data);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject("画像保存に失敗しました");
+  });
+}
+
+function loadImageFromDB(id) {
+  return new Promise((resolve, reject) => {
+    if (!dbReady) {
+      reject("DB not ready");
+      return;
+    }
+    const tx = db.transaction("images", "readonly");
+    const store = tx.objectStore("images");
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result ? req.result.img : null);
+    req.onerror = () => reject("画像読み込みに失敗しました");
+  });
+}
+
+/* -------------------------
+   データ保存（localStorage）
 ------------------------- */
 function save() {
   localStorage.setItem("oshiData", JSON.stringify(data));
@@ -130,7 +201,7 @@ function load() {
   const d = localStorage.getItem("oshiData");
   return d ? JSON.parse(d) : { groups: [] };
 }
-let data = load();
+let data = { groups: [] };
 
 /* -------------------------
    状態管理
@@ -140,6 +211,14 @@ let currentGroup = null;
 let currentMember = null;
 let currentCard = null;
 let currentSort = "none";
+
+/* -------------------------
+   初期化
+------------------------- */
+function initApp() {
+  data = load();
+  render();
+}
 
 /* -------------------------
    画面描画
@@ -157,18 +236,15 @@ function render() {
     title.textContent = "グループ一覧";
     add.style.display = "block";
     renderGroups(view);
-  }
-  if (currentScreen === "members") {
+  } else if (currentScreen === "members") {
     title.textContent = data.groups[currentGroup].name + " のメンバー";
     add.style.display = "block";
     renderMembers(view);
-  }
-  if (currentScreen === "cards") {
+  } else if (currentScreen === "cards") {
     title.textContent = data.groups[currentGroup].members[currentMember].name + " のカード";
     add.style.display = "block";
     renderCards(view);
-  }
-  if (currentScreen === "detail") {
+  } else if (currentScreen === "detail") {
     title.textContent = "カード詳細";
     add.style.display = "none";
     renderDetail(view);
@@ -190,8 +266,8 @@ function goBack() {
 ------------------------- */
 function handleAdd() {
   if (currentScreen === "groups") addGroup();
-  if (currentScreen === "members") addMember();
-  if (currentScreen === "cards") addCard();
+  else if (currentScreen === "members") addMember();
+  else if (currentScreen === "cards") addCard();
 }
 
 /* -------------------------
@@ -208,7 +284,7 @@ function renderGroups(view) {
     t.className = "tile";
     t.innerHTML = `
       <div>${g.name}</div>
-      ${g.members.length === 0 ? `<button class="delete-btn" onclick="deleteGroup(${i});event.stopPropagation();">削除</button>` : ""}
+      ${g.members.length === 0 ? `<button class="small-btn" onclick="deleteGroup(${i});event.stopPropagation();">削除</button>` : ""}
     `;
     t.onclick = () => {
       currentGroup = i;
@@ -238,7 +314,7 @@ function renderMembers(view) {
     t.className = "tile";
     t.innerHTML = `
       <div>${m.name}</div>
-      ${m.cards.length === 0 ? `<button class="delete-btn" onclick="deleteMember(${i});event.stopPropagation();">削除</button>` : ""}
+      ${m.cards.length === 0 ? `<button class="small-btn" onclick="deleteMember(${i});event.stopPropagation();">削除</button>` : ""}
     `;
     t.onclick = () => {
       currentMember = i;
@@ -252,9 +328,9 @@ function renderMembers(view) {
 }
 
 /* -------------------------
-   カード一覧
+   カード一覧（画像は IndexedDB から）
 ------------------------- */
-function renderCards(view) {
+async function renderCards(view) {
   const member = data.groups[currentGroup].members[currentMember];
 
   if (member.cards.length === 0) {
@@ -262,12 +338,8 @@ function renderCards(view) {
     return;
   }
 
-  /* 並び替えボタン */
   const sortBox = document.createElement("div");
   sortBox.className = "sort-box";
-  sortBox.style.display = "flex";
-  sortBox.style.gap = "10px";
-
   sortBox.innerHTML = `
     <button onclick="currentSort='name';render()">名前順</button>
     <button onclick="currentSort='price';render()">最安値順</button>
@@ -275,13 +347,11 @@ function renderCards(view) {
   `;
   view.appendChild(sortBox);
 
-  /* ソート処理 */
   let cards = member.cards.map((c, i) => ({ ...c, _index: i }));
 
   if (currentSort === "name") {
     cards.sort((a, b) => a.name.localeCompare(b.name, "ja"));
-  }
-  if (currentSort === "price") {
+  } else if (currentSort === "price") {
     cards.sort((a, b) => {
       const pa = a.price === "未取得" ? 9999999 : Number(a.price.replace("¥",""));
       const pb = b.price === "未取得" ? 9999999 : Number(b.price.replace("¥",""));
@@ -292,11 +362,13 @@ function renderCards(view) {
   const grid = document.createElement("div");
   grid.className = "grid";
 
-  cards.forEach((c) => {
+  for (const c of cards) {
+    const imgData = await loadImageFromDB(c.imgID);
+
     const t = document.createElement("div");
     t.className = "card-tile";
     t.innerHTML = `
-      <img src="${c.img}" class="card-img">
+      <img src="${imgData}" class="card-img">
       <div>${c.name}</div>
       <div>所持：${c.count}</div>
       <div>${c.price}</div>
@@ -307,7 +379,7 @@ function renderCards(view) {
       render();
     };
     grid.appendChild(t);
-  });
+  }
 
   view.appendChild(grid);
 }
@@ -315,14 +387,15 @@ function renderCards(view) {
 /* -------------------------
    詳細画面
 ------------------------- */
-function renderDetail(view) {
+async function renderDetail(view) {
   const card = data.groups[currentGroup].members[currentMember].cards[currentCard];
+  const imgData = await loadImageFromDB(card.imgID);
 
   view.innerHTML = `
-    <img src="${card.img}" class="detail-img">
+    <img src="${imgData}" class="detail-img">
     <div class="detail-box">
       <div>カード名：${card.name}</div>
-      <div>所持枚数：${card.count} <button onclick="editCount()">編集</button></div>
+      <div>所持枚数：${card.count} <button class="small-btn" onclick="editCount()">編集</button></div>
       <div>最安値：${card.price}</div>
       <button onclick="searchMercari()" class="tile">メルカリで検索</button>
       <button onclick="deleteCard()" class="delete-btn">カードを削除</button>
@@ -331,7 +404,7 @@ function renderDetail(view) {
 }
 
 /* -------------------------
-   編集：所持枚数
+   所持枚数編集
 ------------------------- */
 function editCount() {
   const card = data.groups[currentGroup].members[currentMember].cards[currentCard];
@@ -362,12 +435,16 @@ function addMember() {
 }
 
 function addCard() {
+  if (!dbReady) {
+    alert("まだ準備中です。少し待ってからもう一度試してください。");
+    return;
+  }
+
   const name = prompt("カード名を入力");
   if (!name) return;
 
   const count = Number(prompt("所持枚数")) || 1;
 
-  // ★ここが超重要：cards を必ず配列に戻す
   const member = data.groups[currentGroup].members[currentMember];
   if (!Array.isArray(member.cards)) {
     member.cards = Object.values(member.cards || {});
@@ -382,25 +459,28 @@ function addCard() {
     if (!file) return;
 
     const reader = new FileReader();
-
-    reader.onload = e => {
-      member.cards.push({
-        name,
-        img: e.target.result,
-        count,
-        price: "未取得"
-      });
-
-      save();
-      render();
+    reader.onload = async e => {
+      const base64 = e.target.result;
+      try {
+        const imgID = await saveImageToDB(base64);
+        member.cards.push({
+          name,
+          imgID,
+          count,
+          price: "未取得"
+        });
+        save();
+        render();
+      } catch (err) {
+        alert("画像の保存に失敗しました");
+      }
     };
-
     reader.readAsDataURL(file);
   };
 
   input.click();
 }
-  
+
 /* -------------------------
    削除
 ------------------------- */
@@ -444,9 +524,14 @@ function searchMercari() {
 }
 
 /* -------------------------
-   まとめ画像生成
+   まとめ画像生成（名前＋所持数表示）
 ------------------------- */
-function exportMemberCards() {
+async function exportMemberCards() {
+  if (!dbReady) {
+    alert("まだ準備中です。少し待ってからもう一度試してください。");
+    return;
+  }
+
   const member = data.groups[currentGroup].members[currentMember];
   const cards = member.cards;
 
@@ -456,8 +541,8 @@ function exportMemberCards() {
   }
 
   const cols = 5;
-  const cardW = 160;
-  const cardH = 200;
+  const cardW = 180;
+  const cardH = 230;
   const rows = Math.ceil(cards.length / cols);
 
   const canvas = document.createElement("canvas");
@@ -468,56 +553,55 @@ function exportMemberCards() {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  let index = 0;
+  for (let index = 0; index < cards.length; index++) {
+    const card = cards[index];
+    const imgData = await loadImageFromDB(card.imgID);
+    if (!imgData) continue;
 
-  cards.forEach((card) => {
-    const img = new Image();
-    img.src = card.img;
+    const img = await new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.src = imgData;
+    });
 
-    img.onload = () => {
-      const col = index % cols;
-      const row = Math.floor(index / cols);
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    const x = col * cardW;
+    const y = row * cardH;
 
-      const x = col * cardW;
-      const y = row * cardH;
+    const maxW = cardW - 20;
+    const maxH = cardH - 60;
 
-      const maxW = cardW;
-      const maxH = cardH - 30;
+    let w = img.width;
+    let h = img.height;
+    const scale = Math.min(maxW / w, maxH / h);
+    w *= scale;
+    h *= scale;
 
-      let w = img.width;
-      let h = img.height;
+    const ix = x + (cardW - w) / 2;
+    const iy = y + 10;
 
-      const scale = Math.min(maxW / w, maxH / h);
-      w *= scale;
-      h *= scale;
+    ctx.drawImage(img, ix, iy, w, h);
 
-      const ix = x + (cardW - w) / 2;
-      const iy = y;
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.fillRect(x + 10, y + cardH - 50, cardW - 20, 40);
 
-      ctx.drawImage(img, ix, iy, w, h);
+    ctx.fillStyle = "#6bbcff";
+    ctx.font = "14px 'Zen Maru Gothic'";
+    ctx.textAlign = "center";
+    ctx.fillText(card.name, x + cardW / 2, y + cardH - 30);
 
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.fillRect(ix, iy + h - 28, w, 28);
+    ctx.fillStyle = "#555";
+    ctx.font = "12px 'Zen Maru Gothic'";
+    ctx.fillText(`所持：${card.count}`, x + cardW / 2, y + cardH - 12);
+  }
 
-      ctx.fillStyle = "#6bbcff";
-      ctx.font = "16px 'Zen Maru Gothic'";
-      ctx.textAlign = "center";
-      ctx.fillText(card.name, ix + w / 2, iy + h - 8);
-
-      index++;
-
-      if (index === cards.length) {
-        const url = canvas.toDataURL("image/png");
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${member.name}_cards.png`;
-        a.click();
-      }
-    };
-  });
+  const url = canvas.toDataURL("image/png");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${member.name}_cards.png`;
+  a.click();
 }
-
-render();
 </script>
 
 </body>
