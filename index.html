@@ -449,25 +449,28 @@ function renderCards(view) {
   const grid = document.createElement("div");
   grid.className = "grid";
 
-  cards.forEach((c, ci) => {
-    const tile = document.createElement("div");
-    tile.className = "card-tile";
+cards.forEach((c) => {
+  const tile = document.createElement("div");
+  tile.className = "card-tile";
 
-    tile.innerHTML = `
-      <img src="${c.img}" class="card-img">
-      <div>${c.name}</div>
-      <div class="card-count">所持：${c.count || 1}</div>
-      <div class="card-price">${c.price || "未取得"}</div>
-    `;
+  tile.innerHTML = `
+    <img src="${c.img}" class="card-img">
+    <div>${c.name}</div>
+    <div class="card-count">所持：${c.count || 1}</div>
+    <div class="card-price">${c.price || "未取得"}</div>
+  `;
 
-    tile.onclick = () => {
-      currentCard = ci;
-      currentScreen = "detail";
-      render();
-    };
+  tile.onclick = () => {
+    // ★ 元の配列の index を取得
+    currentCard = member.cards.indexOf(c);
 
-    grid.appendChild(tile);
-  });
+    currentScreen = "detail";
+    render();
+  };
+
+  grid.appendChild(tile);
+});
+
 
   view.appendChild(grid);
 
