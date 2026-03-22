@@ -60,6 +60,7 @@
   .card-img {
     width: 100%;
     border-radius: 6px;
+    background: #e5efff;
   }
 
   .card-tile {
@@ -81,6 +82,7 @@
     display: block;
     margin: 0 auto;
     border-radius: 14px;
+    background: #e5efff;
   }
 
   .detail-box {
@@ -328,17 +330,16 @@ function renderMembers(view) {
 }
 
 /* -------------------------
-   カード一覧（画像は IndexedDB から）
+   カード一覧（画像はあとから差し込む）
 ------------------------- */
-async function renderCards(view) {
+function renderCards(view) {
   const member = data.groups[currentGroup].members[currentMember];
 
-  if (member.cards.length === 0) {
+  if (!member || !Array.isArray(member.cards) || member.cards.length === 0) {
     view.innerHTML = `<div class="empty">まだカードがありません</div>`;
     return;
   }
 
-  // 並び替えUI
   const sortBox = document.createElement("div");
   sortBox.className = "sort-box";
   sortBox.innerHTML = `
@@ -348,7 +349,6 @@ async function renderCards(view) {
   `;
   view.appendChild(sortBox);
 
-  // ソート処理
   let cards = member.cards.map((c, i) => ({ ...c, _index: i }));
 
   if (currentSort === "name") {
@@ -358,22 +358,32 @@ async function renderCards(view) {
     cards.sort((a, b) => toNum(a.price) - toNum(b.price));
   }
 
-  // グリッド
   const grid = document.createElement("div");
   grid.className = "grid";
 
-  // ★ 画像読み込みをすべて待つ
-  for (const c of cards) {
-    const imgData = await loadImageFromDB(c.imgID);
-
+  cards.forEach((c) => {
     const t = document.createElement("div");
     t.className = "card-tile";
-    t.innerHTML = `
-      <img src="${imgData}" class="card-img">
-      <div>${c.name}</div>
-      <div>所持：${c.count}</div>
-      <div>${c.price}</div>
-    `;
+
+    const img = document.createElement("img");
+    img.className = "card-img";
+    img.alt = c.name;
+
+    // 先に枠だけ出す
+    t.appendChild(img);
+
+    const nameDiv = document.createElement("div");
+    nameDiv.textContent = c.name;
+    t.appendChild(nameDiv);
+
+    const countDiv = document.createElement("div");
+    countDiv.textContent = `所持：${c.count}`;
+    t.appendChild(countDiv);
+
+    const priceDiv = document.createElement("div");
+    priceDiv.textContent = c.price;
+    t.appendChild(priceDiv);
+
     t.onclick = () => {
       currentCard = c._index;
       currentScreen = "detail";
@@ -381,28 +391,54 @@ async function renderCards(view) {
     };
 
     grid.appendChild(t);
-  }
+
+    // 画像はあとから読み込んで差し込む
+    if (c.imgID != null) {
+      loadImageFromDB(c.imgID).then(dataUrl => {
+        if (dataUrl) img.src = dataUrl;
+      }).catch(() => {
+        img.style.background = "#ccc";
+      });
+    }
+  });
 
   view.appendChild(grid);
 }
-  
-/* -------------------------
-   詳細画面
-------------------------- */
-async function renderDetail(view) {
-  const card = data.groups[currentGroup].members[currentMember].cards[currentCard];
-  const imgData = await loadImageFromDB(card.imgID);
 
-  view.innerHTML = `
-    <img src="${imgData}" class="detail-img">
-    <div class="detail-box">
-      <div>カード名：${card.name}</div>
-      <div>所持枚数：${card.count} <button class="small-btn" onclick="editCount()">編集</button></div>
-      <div>最安値：${card.price}</div>
-      <button onclick="searchMercari()" class="tile">メルカリで検索</button>
-      <button onclick="deleteCard()" class="delete-btn">カードを削除</button>
-    </div>
+/* -------------------------
+   詳細画面（画像あとから差し込む）
+------------------------- */
+function renderDetail(view) {
+  const card = data.groups[currentGroup].members[currentMember].cards[currentCard];
+
+  const wrapper = document.createElement("div");
+
+  const img = document.createElement("img");
+  img.className = "detail-img";
+  img.alt = card.name;
+  wrapper.appendChild(img);
+
+  const box = document.createElement("div");
+  box.className = "detail-box";
+  box.innerHTML = `
+    <div>カード名：${card.name}</div>
+    <div>所持枚数：${card.count} <button class="small-btn" onclick="editCount()">編集</button></div>
+    <div>最安値：${card.price}</div>
+    <button onclick="searchMercari()" class="tile">メルカリで検索</button>
+    <button onclick="deleteCard()" class="delete-btn">カードを削除</button>
   `;
+  wrapper.appendChild(box);
+
+  view.innerHTML = "";
+  view.appendChild(wrapper);
+
+  if (card.imgID != null) {
+    loadImageFromDB(card.imgID).then(dataUrl => {
+      if (dataUrl) img.src = dataUrl;
+    }).catch(() => {
+      img.style.background = "#ccc";
+    });
+  }
 }
 
 /* -------------------------
@@ -537,7 +573,7 @@ async function exportMemberCards() {
   const member = data.groups[currentGroup].members[currentMember];
   const cards = member.cards;
 
-  if (cards.length === 0) {
+  if (!cards || cards.length === 0) {
     alert("カードがありません");
     return;
   }
@@ -557,6 +593,8 @@ async function exportMemberCards() {
 
   for (let index = 0; index < cards.length; index++) {
     const card = cards[index];
+    if (card.imgID == null) continue;
+
     const imgData = await loadImageFromDB(card.imgID);
     if (!imgData) continue;
 
