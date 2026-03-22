@@ -193,6 +193,12 @@ button.tile:active {
   transform: scale(0.96);
 }
 
+
+  <div style="display:flex; gap:10px; margin-bottom:12px;">
+  <button id="sort-name" class="tile">名前順</button>
+  <button id="sort-price" class="tile">最安値順</button>
+</div>
+  
 /* カード一覧のタイル */
 .card-tile {
   background: #ffffff;
@@ -394,29 +400,56 @@ function renderMembers(view) {
   view.appendChild(grid);
 }
 
+let currentSort = "none"; // none / name / price
+
 // ======================================================
 // カード一覧
 // ======================================================
 function renderCards(view) {
   const member = data.groups[currentGroup].members[currentMember];
+  let cards = [...member.cards]; // ← ソートしても元データを壊さないようコピー
 
-  if (member.cards.length === 0) {
+  if (cards.length === 0) {
     view.innerHTML = `<div class="empty">まだカードがありません</div>`;
     return;
   }
 
-  // ▼ まとめ画像ボタンを追加
+  // ▼ 並び替え処理（ここに入れる！）
+  if (currentSort === "name") {
+    cards.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  }
+
+  if (currentSort === "price") {
+    cards.sort((a, b) => {
+      const priceA = a.price || 9999999;
+      const priceB = b.price || 9999999;
+      return priceA - priceB;
+    });
+  }
+
+  // ▼ まとめ画像ボタン
   const exportBtn = document.createElement("button");
   exportBtn.className = "tile";
   exportBtn.innerText = "まとめ画像を作る";
   exportBtn.onclick = exportMemberCards;
   view.appendChild(exportBtn);
 
+  // ▼ 並び替えボタン
+  const sortBox = document.createElement("div");
+  sortBox.style.display = "flex";
+  sortBox.style.gap = "10px";
+  sortBox.style.marginBottom = "12px";
+  sortBox.innerHTML = `
+    <button id="sort-name" class="tile">名前順</button>
+    <button id="sort-price" class="tile">最安値順</button>
+  `;
+  view.appendChild(sortBox);
+
   // ▼ カード一覧
   const grid = document.createElement("div");
   grid.className = "grid";
 
-  member.cards.forEach((c, ci) => {
+  cards.forEach((c, ci) => {
     const tile = document.createElement("div");
     tile.className = "card-tile";
 
@@ -437,8 +470,19 @@ function renderCards(view) {
   });
 
   view.appendChild(grid);
-}
 
+  // ▼ ボタンのイベント（ここで currentSort を更新して再描画）
+  document.getElementById("sort-name").onclick = () => {
+    currentSort = "name";
+    render(); // ← 画面全体を再描画
+  };
+
+  document.getElementById("sort-price").onclick = () => {
+    currentSort = "price";
+    render();
+  };
+}
+  
 // ======================================================
 // カード詳細画面
 // ======================================================
@@ -575,7 +619,7 @@ function exportMemberCards() {
   // ★ 5列
   const cols = 5;
 
-  // ★ 外枠をさらに狭くして画像を大きく
+  // ★ 画像中心のレイアウトにするため枠を小さめに
   const cardBoxW = 180;
   const cardBoxH = 220;
 
@@ -603,19 +647,9 @@ function exportMemberCards() {
       const boxX = col * cardBoxW;
       const boxY = row * cardBoxH;
 
-      // ★ 枠（薄ピンク）
-      const radius = 14;
-      ctx.fillStyle = "#ffeef7";
-      roundRect(ctx, boxX + 4, boxY + 4, cardBoxW - 8, cardBoxH - 8, radius);
-      ctx.fill();
-
-      ctx.strokeStyle = "#ffc7dd";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
       // ★ 画像を最大限大きく（比率維持）
       const maxW = cardBoxW - 20;
-      const maxH = 160;
+      const maxH = 150;
 
       let w = img.width;
       let h = img.height;
@@ -625,13 +659,16 @@ function exportMemberCards() {
       h *= scale;
 
       const imgX = boxX + (cardBoxW - w) / 2;
-      const imgY = boxY + 18;
+      const imgY = boxY + 10;
 
-     // 画像を角丸で描画する
-      const imgRadius = 4; // ← カード一覧と同じくらいの丸み
-      
-      ctx.save(); // いったん状態を保存
-      
+      // ★ 白い縁取り（枠の代わり）
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(imgX - 4, imgY - 4, w + 8, h + 8);
+
+      // ★ 画像を角丸で描画
+      const imgRadius = 4;
+
+      ctx.save();
       ctx.beginPath();
       ctx.moveTo(imgX + imgRadius, imgY);
       ctx.arcTo(imgX + w, imgY, imgX + w, imgY + h, imgRadius);
@@ -639,29 +676,31 @@ function exportMemberCards() {
       ctx.arcTo(imgX, imgY + h, imgX, imgY, imgRadius);
       ctx.arcTo(imgX, imgY, imgX + w, imgY, imgRadius);
       ctx.closePath();
-      ctx.clip(); // この中だけに描画されるようにする
-      
-      ctx.drawImage(img, imgX, imgY, w, h); // 角丸マスクの中に画像を描く
-      
-      ctx.restore(); // マスクを解除
+      ctx.clip();
 
-      // ★ カード名（太字・大きめ）
+      ctx.drawImage(img, imgX, imgY, w, h);
+      ctx.restore();
+
+      // ★ カード名（画像の下に白帯＋水色文字）
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fillRect(imgX, imgY + h - 28, w, 28);
+
       ctx.fillStyle = "#6bbcff";
-      ctx.font = "700 18px 'Zen Maru Gothic'";
+      ctx.font = "700 16px 'Zen Maru Gothic'";
       ctx.textAlign = "center";
-      ctx.fillText(card.name, boxX + cardBoxW / 2, boxY + 200);
+      ctx.fillText(card.name, imgX + w / 2, imgY + h - 8);
 
-      // ★ 所持数バッジ（2枚以上のときだけ）
+      // ★ 所持数バッジ（大きく）
       if ((card.count || 1) >= 2) {
         ctx.fillStyle = "#6bbcff";
         ctx.beginPath();
-        ctx.arc(imgX + w - 8, imgY + 8, 15, 0, Math.PI * 2); // ← 画像に被せる位置
+        ctx.arc(imgX + w - 14, imgY + 14, 20, 0, Math.PI * 2); // ← 大きくした
         ctx.fill();
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "700 14px 'Zen Maru Gothic'";
+        ctx.font = "700 18px 'Zen Maru Gothic'"; // ← 文字も大きく
         ctx.textAlign = "center";
-        ctx.fillText("×" + card.count, imgX + w - 10, imgY + 15);
+        ctx.fillText("×" + card.count, imgX + w - 14, imgY + 20);
       }
 
       // ★ キラキラ（かわいさUP）
@@ -680,33 +719,6 @@ function exportMemberCards() {
       }
     };
   });
-}
-
-// ★ キラキラ関数
-function drawSparkle(ctx, x, y, size, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(x, y - size);
-  ctx.lineTo(x + size * 0.3, y - size * 0.3);
-  ctx.lineTo(x + size, y);
-  ctx.lineTo(x + size * 0.3, y + size * 0.3);
-  ctx.lineTo(x, y + size);
-  ctx.lineTo(x - size * 0.3, y + size * 0.3);
-  ctx.lineTo(x - size, y);
-  ctx.lineTo(x - size * 0.3, y - size * 0.3);
-  ctx.closePath();
-  ctx.fill();
-}
-
-// ★ 角丸枠
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
 }
 </script>
 
