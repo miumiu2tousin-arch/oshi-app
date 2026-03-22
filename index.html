@@ -251,6 +251,11 @@ function render() {
 
   view.innerHTML = "";
 
+  // ★ グループが0個のときに members 画面に入らないようにする
+  if (currentScreen === "members" && data.groups.length === 0) {
+    currentScreen = "groups";
+  }
+
   // 戻るボタン表示制御
   backBtn.style.display = currentScreen === "groups" ? "none" : "block";
 
