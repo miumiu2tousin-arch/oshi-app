@@ -403,11 +403,13 @@ function renderMembers(view) {
 let currentSort = "none"; // none / name / price
 
 // ======================================================
-// カード一覧（完全版・ソート対応・クリックズレ修正済み）
+// カード一覧（完全安定版）
 // ======================================================
 function renderCards(view) {
   const member = data.groups[currentGroup].members[currentMember];
-  let cards = [...member.cards]; // ソート用コピー
+
+  // ★ 元データを壊さないコピー
+  let cards = member.cards.map((c, i) => ({ ...c, _index: i }));
 
   if (cards.length === 0) {
     view.innerHTML = `<div class="empty">まだカードがありません</div>`;
@@ -439,10 +441,25 @@ function renderCards(view) {
   sortBox.style.display = "flex";
   sortBox.style.gap = "10px";
   sortBox.style.marginBottom = "12px";
-  sortBox.innerHTML = `
-    <button id="sort-name" class="tile">名前順</button>
-    <button id="sort-price" class="tile">最安値順</button>
-  `;
+
+  const btnName = document.createElement("button");
+  btnName.className = "tile";
+  btnName.textContent = "名前順";
+  btnName.onclick = () => {
+    currentSort = "name";
+    render();
+  };
+
+  const btnPrice = document.createElement("button");
+  btnPrice.className = "tile";
+  btnPrice.textContent = "最安値順";
+  btnPrice.onclick = () => {
+    currentSort = "price";
+    render();
+  };
+
+  sortBox.appendChild(btnName);
+  sortBox.appendChild(btnPrice);
   view.appendChild(sortBox);
 
   // ▼ カード一覧
@@ -461,9 +478,7 @@ function renderCards(view) {
     `;
 
     tile.onclick = () => {
-      // ★ ソート後の index ではなく、元の配列の index を使う（超重要）
-      currentCard = member.cards.indexOf(c);
-
+      currentCard = c._index; // ← 元の index を確実に取得
       currentScreen = "detail";
       render();
     };
@@ -472,17 +487,6 @@ function renderCards(view) {
   });
 
   view.appendChild(grid);
-
-  // ▼ 並び替えボタンのイベント
-  document.getElementById("sort-name").onclick = () => {
-    currentSort = "name";
-    render();
-  };
-
-  document.getElementById("sort-price").onclick = () => {
-    currentSort = "price";
-    render();
-  };
 }
   
 // ======================================================
