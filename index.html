@@ -564,7 +564,11 @@ function searchMercari() {
 }
 
 /* -------------------------
-   まとめ画像生成（画像大きく・余白最小・下部帯＋バッジ）
+   まとめ画像生成（改良版）
+   - 名前大きく中央
+   - 所持数バッジ大きく
+   - 余白ほぼゼロ
+   - 並び替え順を反映
 ------------------------- */
 async function exportMemberCards() {
   if (!dbReady) {
@@ -573,18 +577,28 @@ async function exportMemberCards() {
   }
 
   const member = data.groups[currentGroup].members[currentMember];
-  const cards = member.cards;
+  let cards = member.cards;
 
   if (!cards || cards.length === 0) {
     alert("カードがありません");
     return;
   }
 
-  /* レイアウト設定 */
-  const cols = 5;              // 1行の枚数
-  const cardW = 210;           // カード幅（さらに大きく）
-  const cardH = 280;           // カード高さ（さらに大きく）
-  const padding = 2;           // 余白ほぼゼロ
+  /* ▼ 並び替え順を反映（画面と同じ順番） */
+  cards = cards.map((c, i) => ({ ...c, _index: i }));
+
+  if (currentSort === "name") {
+    cards.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  } else if (currentSort === "price") {
+    const toNum = p => p === "未取得" ? 9999999 : Number(p.replace("¥",""));
+    cards.sort((a, b) => toNum(a.price) - toNum(b.price));
+  }
+
+  /* ▼ レイアウト設定（さらに大きく・さらに詰める） */
+  const cols = 5;
+  const cardW = 220;   // さらに大きく
+  const cardH = 300;   // さらに大きく
+  const padding = 0;   // ゼロ
   const rows = Math.ceil(cards.length / cols);
 
   const canvas = document.createElement("canvas");
@@ -614,9 +628,9 @@ async function exportMemberCards() {
     const x = col * (cardW + padding);
     const y = row * (cardH + padding);
 
-    /* 画像を最大限大きく表示（下部帯のため少し縮小） */
+    /* ▼ 画像を最大限大きく表示 */
     const maxW = cardW - 10;
-    const maxH = cardH - 60;
+    const maxH = cardH - 70; // 下部帯のため少し縮小
 
     let w = img.width;
     let h = img.height;
@@ -629,32 +643,32 @@ async function exportMemberCards() {
 
     ctx.drawImage(img, ix, iy, w, h);
 
-    /* 下部帯（白の半透明） */
-    const bandH = 50;
+    /* ▼ 下部帯（白の半透明） */
+    const bandH = 60;
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.fillRect(x, y + cardH - bandH, cardW, bandH);
 
-    /* 名前（左寄せ） */
+    /* ▼ 名前（中央寄せ・大きく） */
     ctx.fillStyle = "#4a7fc9";
-    ctx.font = "16px 'Zen Maru Gothic'";
-    ctx.textAlign = "left";
-    ctx.fillText(card.name, x + 10, y + cardH - 20);
+    ctx.font = "20px 'Zen Maru Gothic'";  // ← 大きくした
+    ctx.textAlign = "center";
+    ctx.fillText(card.name, x + cardW / 2, y + cardH - 25);
 
-    /* 所持数バッジ（角丸四角・右側） */
-    const badgeW = 55;
-    const badgeH = 28;
+    /* ▼ 所持数バッジ（角丸四角・大きく） */
+    const badgeW = 70;
+    const badgeH = 32;
     const bx = x + cardW - badgeW - 10;
-    const by = y + cardH - bandH + 10;
+    const by = y + cardH - bandH + 12;
 
     ctx.fillStyle = "#7bbcff";
     ctx.beginPath();
-    ctx.roundRect(bx, by, badgeW, badgeH, 8);
+    ctx.roundRect(bx, by, badgeW, badgeH, 10);
     ctx.fill();
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "15px 'Zen Maru Gothic'";
+    ctx.font = "18px 'Zen Maru Gothic'";  // ← 大きくした
     ctx.textAlign = "center";
-    ctx.fillText(`×${card.count}`, bx + badgeW / 2, by + 19);
+    ctx.fillText(`×${card.count}`, bx + badgeW / 2, by + 22);
   }
 
   const url = canvas.toDataURL("image/png");
