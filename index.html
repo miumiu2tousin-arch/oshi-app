@@ -373,23 +373,36 @@ function addCard() {
 
   input.onchange = () => {
     const file = input.files[0];
+    if (!file) return;
+
     const reader = new FileReader();
+
     reader.onload = e => {
-      data.groups[currentGroup].members[currentMember].cards.push({
+      const imgData = e.target.result;
+
+      // ここで必ず保存されるようにする
+      const member = data.groups[currentGroup].members[currentMember];
+      member.cards.push({
         name,
-        img: e.target.result,
+        img: imgData,
         count,
         price: "未取得"
       });
-      save();
-      render();
+
+      save();   // ← 保存を確実に実行
+      render(); // ← 画面更新
     };
+
+    reader.onerror = () => {
+      alert("画像の読み込みに失敗しました");
+    };
+
     reader.readAsDataURL(file);
   };
 
   input.click();
 }
-
+  
 /* -------------------------
    削除
 ------------------------- */
