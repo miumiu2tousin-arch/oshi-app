@@ -540,11 +540,14 @@ function addCard() {
 
   input.onchange = function () {
     const file = input.files[0];
+    if (!file) return;
+
     const reader = new FileReader();
 
     reader.onload = function (e) {
       const base64 = e.target.result;
 
+      // ★ 画像読み込み完了後に確実に追加
       data.groups[currentGroup].members[currentMember].cards.push({
         name,
         img: base64,
@@ -553,7 +556,11 @@ function addCard() {
       });
 
       save();
-      render();
+
+      // ★ Safari で確実に反映させるための遅延
+      setTimeout(() => {
+        render();
+      }, 0);
     };
 
     reader.readAsDataURL(file);
@@ -609,110 +616,91 @@ function exportMemberCards() {
     return;
   }
 
-  // ★ 5列
-  const cols = 5;
+// ★ 5列
+const cols = 5;
 
-  // ★ 画像中心のレイアウトにするため枠を小さめに
-  const cardBoxW = 180;
-  const cardBoxH = 220;
+// ★ カード枠を小さくして隙間を減らす
+const cardBoxW = 160;
+const cardBoxH = 200;
 
-  const rows = Math.ceil(cards.length / cols);
+const rows = Math.ceil(cards.length / cols);
 
-  const canvas = document.createElement("canvas");
-  canvas.width = cols * cardBoxW;
-  canvas.height = rows * cardBoxH;
+const canvas = document.createElement("canvas");
+canvas.width = cols * cardBoxW;
+canvas.height = rows * cardBoxH;
 
-  const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.fillStyle = "#ffffff";
+ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  let index = 0;
+let index = 0;
 
-  cards.forEach((card) => {
-    const img = new Image();
-    img.src = card.img;
+cards.forEach((card) => {
+  const img = new Image();
+  img.src = card.img;
 
-    img.onload = () => {
-      const col = index % cols;
-      const row = Math.floor(index / cols);
+  img.onload = () => {
+    const col = index % cols;
+    const row = Math.floor(index / cols);
 
-      const boxX = col * cardBoxW;
-      const boxY = row * cardBoxH;
+    const boxX = col * cardBoxW;
+    const boxY = row * cardBoxH;
 
-      // ★ 画像を最大限大きく（比率維持）
-      const maxW = cardBoxW - 20;
-      const maxH = 150;
+    // ★ 最大サイズで描画（余白ほぼゼロ）
+    const maxW = cardBoxW;
+    const maxH = cardBoxH - 30; // 下の名前帯だけ残す
 
-      let w = img.width;
-      let h = img.height;
+    let w = img.width;
+    let h = img.height;
 
-      const scale = Math.min(maxW / w, maxH / h);
-      w *= scale;
-      h *= scale;
+    const scale = Math.min(maxW / w, maxH / h);
+    w *= scale;
+    h *= scale;
 
-      const imgX = boxX + (cardBoxW - w) / 2;
-      const imgY = boxY + 10;
+    const imgX = boxX + (cardBoxW - w) / 2;
+    const imgY = boxY;
 
-      // ★ 白い縁取り（枠の代わり）
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(imgX - 4, imgY - 4, w + 8, h + 8);
+    // ★ 縁取りを薄く（1px）
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(imgX - 1, imgY - 1, w + 2, h + 2);
 
-      // ★ 画像を角丸で描画
-      const imgRadius = 4;
+    // ★ 角丸画像
+    const imgRadius = 4;
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(imgX + imgRadius, imgY);
-      ctx.arcTo(imgX + w, imgY, imgX + w, imgY + h, imgRadius);
-      ctx.arcTo(imgX + w, imgY + h, imgX, imgY + h, imgRadius);
-      ctx.arcTo(imgX, imgY + h, imgX, imgY, imgRadius);
-      ctx.arcTo(imgX, imgY, imgX + w, imgY, imgRadius);
-      ctx.closePath();
-      ctx.clip();
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(imgX + imgRadius, imgY);
+    ctx.arcTo(imgX + w, imgY, imgX + w, imgY + h, imgRadius);
+    ctx.arcTo(imgX + w, imgY + h, imgX, imgY + h, imgRadius);
+    ctx.arcTo(imgX, imgY + h, imgX, imgY, imgRadius);
+    ctx.arcTo(imgX, imgY, imgX + w, imgY, imgRadius);
+    ctx.closePath();
+    ctx.clip();
 
-      ctx.drawImage(img, imgX, imgY, w, h);
-      ctx.restore();
+    ctx.drawImage(img, imgX, imgY, w, h);
+    ctx.restore();
 
-      // ★ カード名（画像の下に白帯＋水色文字）
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.fillRect(imgX, imgY + h - 28, w, 28);
+    // ★ カード名帯（そのまま）
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.fillRect(imgX, imgY + h - 28, w, 28);
 
-      ctx.fillStyle = "#6bbcff";
-      ctx.font = "700 16px 'Zen Maru Gothic'";
-      ctx.textAlign = "center";
-      ctx.fillText(card.name, imgX + w / 2, imgY + h - 8);
+    ctx.fillStyle = "#6bbcff";
+    ctx.font = "700 16px 'Zen Maru Gothic'";
+    ctx.textAlign = "center";
+    ctx.fillText(card.name, imgX + w / 2, imgY + h - 8);
 
-      // ★ 所持数バッジ（大きく）
-      if ((card.count || 1) >= 2) {
-        ctx.fillStyle = "#6bbcff";
-        ctx.beginPath();
-        ctx.arc(imgX + w - 14, imgY + 14, 20, 0, Math.PI * 2); // ← 大きくした
-        ctx.fill();
+    index++;
 
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "700 18px 'Zen Maru Gothic'"; // ← 文字も大きく
-        ctx.textAlign = "center";
-        ctx.fillText("×" + card.count, imgX + w - 14, imgY + 20);
-      }
-
-      // ★ キラキラ（かわいさUP）
-      drawSparkle(ctx, boxX + 25, boxY + 25, 4, "#ffd6f5");
-      drawSparkle(ctx, boxX + cardBoxW - 50, boxY + 50, 4, "#ffe2fa");
-      drawSparkle(ctx, boxX + 60, boxY + cardBoxH - 50, 5, "#ffccf7");
-
-      index++;
-
-      if (index === cards.length) {
-        const url = canvas.toDataURL("image/png");
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${member.name}_cards.png`;
-        a.click();
-      }
-    };
-  });
-}
+    if (index === cards.length) {
+      const url = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${member.name}_cards.png`;
+      a.click();
+    }
+  };
+});
 
 function drawSparkle(ctx, x, y, size, color) {
   ctx.fillStyle = color;
