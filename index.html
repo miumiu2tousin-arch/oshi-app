@@ -251,9 +251,18 @@ function render() {
 
   view.innerHTML = "";
 
-  // ★ グループが0個のときに members 画面に入らないようにする
+  // ★ グループ0個で members に入らない
   if (currentScreen === "members" && data.groups.length === 0) {
     currentScreen = "groups";
+  }
+
+  // ★ currentGroup が null のとき members を描画しない
+  if (currentScreen === "members") {
+    if (currentGroup === null || !data.groups[currentGroup]) {
+      currentScreen = "groups";
+      render();
+      return;
+    }
   }
 
   // 戻るボタン表示制御
