@@ -338,6 +338,7 @@ async function renderCards(view) {
     return;
   }
 
+  // 並び替えUI
   const sortBox = document.createElement("div");
   sortBox.className = "sort-box";
   sortBox.innerHTML = `
@@ -347,21 +348,21 @@ async function renderCards(view) {
   `;
   view.appendChild(sortBox);
 
+  // ソート処理
   let cards = member.cards.map((c, i) => ({ ...c, _index: i }));
 
   if (currentSort === "name") {
     cards.sort((a, b) => a.name.localeCompare(b.name, "ja"));
   } else if (currentSort === "price") {
-    cards.sort((a, b) => {
-      const pa = a.price === "未取得" ? 9999999 : Number(a.price.replace("¥",""));
-      const pb = b.price === "未取得" ? 9999999 : Number(b.price.replace("¥",""));
-      return pa - pb;
-    });
+    const toNum = p => p === "未取得" ? 9999999 : Number(p.replace("¥",""));
+    cards.sort((a, b) => toNum(a.price) - toNum(b.price));
   }
 
+  // グリッド
   const grid = document.createElement("div");
   grid.className = "grid";
 
+  // ★ 画像読み込みをすべて待つ
   for (const c of cards) {
     const imgData = await loadImageFromDB(c.imgID);
 
@@ -378,12 +379,13 @@ async function renderCards(view) {
       currentScreen = "detail";
       render();
     };
+
     grid.appendChild(t);
   }
 
   view.appendChild(grid);
 }
-
+  
 /* -------------------------
    詳細画面
 ------------------------- */
