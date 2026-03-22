@@ -403,18 +403,18 @@ function renderMembers(view) {
 let currentSort = "none"; // none / name / price
 
 // ======================================================
-// カード一覧
+// カード一覧（完全版・ソート対応・クリックズレ修正済み）
 // ======================================================
 function renderCards(view) {
   const member = data.groups[currentGroup].members[currentMember];
-  let cards = [...member.cards]; // ← ソートしても元データを壊さないようコピー
+  let cards = [...member.cards]; // ソート用コピー
 
   if (cards.length === 0) {
     view.innerHTML = `<div class="empty">まだカードがありません</div>`;
     return;
   }
 
-  // ▼ 並び替え処理（ここに入れる！）
+  // ▼ 並び替え処理
   if (currentSort === "name") {
     cards.sort((a, b) => a.name.localeCompare(b.name, "ja"));
   }
@@ -449,35 +449,34 @@ function renderCards(view) {
   const grid = document.createElement("div");
   grid.className = "grid";
 
-cards.forEach((c) => {
-  const tile = document.createElement("div");
-  tile.className = "card-tile";
+  cards.forEach((c) => {
+    const tile = document.createElement("div");
+    tile.className = "card-tile";
 
-  tile.innerHTML = `
-    <img src="${c.img}" class="card-img">
-    <div>${c.name}</div>
-    <div class="card-count">所持：${c.count || 1}</div>
-    <div class="card-price">${c.price || "未取得"}</div>
-  `;
+    tile.innerHTML = `
+      <img src="${c.img}" class="card-img">
+      <div>${c.name}</div>
+      <div class="card-count">所持：${c.count || 1}</div>
+      <div class="card-price">${c.price || "未取得"}</div>
+    `;
 
-  tile.onclick = () => {
-    // ★ 元の配列の index を取得
-    currentCard = member.cards.indexOf(c);
+    tile.onclick = () => {
+      // ★ ソート後の index ではなく、元の配列の index を使う（超重要）
+      currentCard = member.cards.indexOf(c);
 
-    currentScreen = "detail";
-    render();
-  };
+      currentScreen = "detail";
+      render();
+    };
 
-  grid.appendChild(tile);
-});
-
+    grid.appendChild(tile);
+  });
 
   view.appendChild(grid);
 
-  // ▼ ボタンのイベント（ここで currentSort を更新して再描画）
+  // ▼ 並び替えボタンのイベント
   document.getElementById("sort-name").onclick = () => {
     currentSort = "name";
-    render(); // ← 画面全体を再描画
+    render();
   };
 
   document.getElementById("sort-price").onclick = () => {
