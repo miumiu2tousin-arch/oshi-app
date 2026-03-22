@@ -367,6 +367,12 @@ function addCard() {
 
   const count = Number(prompt("所持枚数")) || 1;
 
+  // ★ここが超重要：cards を必ず配列に戻す
+  const member = data.groups[currentGroup].members[currentMember];
+  if (!Array.isArray(member.cards)) {
+    member.cards = Object.values(member.cards || {});
+  }
+
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
@@ -378,23 +384,15 @@ function addCard() {
     const reader = new FileReader();
 
     reader.onload = e => {
-      const imgData = e.target.result;
-
-      // ここで必ず保存されるようにする
-      const member = data.groups[currentGroup].members[currentMember];
       member.cards.push({
         name,
-        img: imgData,
+        img: e.target.result,
         count,
         price: "未取得"
       });
 
-      save();   // ← 保存を確実に実行
-      render(); // ← 画面更新
-    };
-
-    reader.onerror = () => {
-      alert("画像の読み込みに失敗しました");
+      save();
+      render();
     };
 
     reader.readAsDataURL(file);
